@@ -1,4 +1,4 @@
-package signer
+package suite
 
 type Signer interface {
 	// Sign will sign document and return signature

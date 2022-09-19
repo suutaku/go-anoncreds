@@ -7,8 +7,8 @@ import (
 )
 
 type BBSSigner struct {
-	pk    *bbs.PrivateKey
-	suite *bbs.Bbs
+	pk   *bbs.PrivateKey
+	algo *bbs.Bbs
 }
 
 func NewBBSSigner(pk *bbs.PrivateKey) *BBSSigner {
@@ -22,7 +22,7 @@ func NewBBSSigner(pk *bbs.PrivateKey) *BBSSigner {
 	} else {
 		ret.pk = pk
 	}
-	ret.suite = bbs.NewBbs()
+	ret.algo = bbs.NewBbs()
 	return ret
 }
 
@@ -35,7 +35,7 @@ func (sig *BBSSigner) PublicKey() *bbs.PublicKey {
 }
 
 func (sig *BBSSigner) Sign(msg [][]byte) ([]byte, error) {
-	return sig.suite.SignWithKey(msg, sig.pk)
+	return sig.algo.SignWithKey(msg, sig.pk)
 }
 
 func (sig *BBSSigner) Alg() string {

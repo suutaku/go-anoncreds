@@ -1,4 +1,4 @@
-package verifier
+package suite
 
 import "crypto"
 

@@ -6,7 +6,7 @@ import "crypto"
 type SignatureSuite interface {
 
 	// GetCanonicalDocument will return normalized/canonical version of the document
-	GetCanonicalDocument(doc map[string]interface{}) ([]byte, error)
+	GetCanonicalDocument(doc interface{}) ([]byte, error)
 
 	// GetDigest returns document digest
 	GetDigest(doc []byte) []byte
