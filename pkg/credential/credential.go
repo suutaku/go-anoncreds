@@ -2,7 +2,6 @@ package credential
 
 import (
 	"encoding/json"
-	"time"
 )
 
 // Evidence defines evidence of Verifiable Credential.
@@ -32,8 +31,8 @@ type Credential struct {
 	// Subject can be a string, map, slice of maps, struct (Subject or any custom), slice of structs.
 	Subject        interface{} `json:"credentialSubject,omitempty"`
 	Issuer         *Issuer     `json:"issuer,omitempty"`
-	Issued         time.Time   `json:"issuanceDate,omitempty"`
-	Expired        time.Time   `json:"expirationDate,omitempty"`
+	Issued         string      `json:"issuanceDate,omitempty"`
+	Expired        string      `json:"expirationDate,omitempty"`
 	Proof          interface{} `json:"proof,omitempty"`
 	Status         *TypedID    `json:"credentialStatus,omitempty"`
 	Schemas        interface{} `json:"credentialSchema,omitempty"`

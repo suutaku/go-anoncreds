@@ -29,12 +29,19 @@ func (pbk *PublicKey) Equal(x crypto.PublicKey) bool {
 	return true
 }
 
-type PublickKeyResolver struct {
+type PublicKeyResolver struct {
 	pubKey   *PublicKey
 	variants map[string]*PublicKey
 }
 
-func (pkrsv *PublickKeyResolver) Resolve(id string) *PublicKey {
+func NewPublicKeyResolver(pub *PublicKey, variants map[string]*PublicKey) *PublicKeyResolver {
+	return &PublicKeyResolver{
+		pubKey:   pub,
+		variants: variants,
+	}
+}
+
+func (pkrsv *PublicKeyResolver) Resolve(id string) *PublicKey {
 	if len(pkrsv.variants) > 0 {
 		return pkrsv.variants[id]
 	}

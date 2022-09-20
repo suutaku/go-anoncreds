@@ -2,16 +2,19 @@ package bbsblssignature2020
 
 import (
 	"crypto"
+	"encoding/base64"
+	"errors"
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/suutaku/go-anoncreds/pkg/credential"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-bbs/pkg/bbs"
 )
 
 type BBSVerifier struct {
-	algo     *bbs.Bbs
-	resolver *suite.PublickKeyResolver
+	algo *bbs.Bbs
+	// resolver *suite.PublickKeyResolver
 }
 
 func NewBBSVerifier() *BBSVerifier {
@@ -21,14 +24,11 @@ func NewBBSVerifier() *BBSVerifier {
 }
 
 func (verifier *BBSVerifier) Verify(pubKey crypto.PublicKey, doc, signature []byte) error {
-	keyBytes, err := pubKey.(*bbs.PublicKey).Marshal()
-	if err != nil {
-		return err
-	}
+	keyBytes := pubKey.(*suite.PublicKey).Value
 	return verifier.algo.Verify([][]byte{doc}, signature, keyBytes)
 }
 
-func (verifier *BBSVerifier) VerifyProof(cred *credential.Credential) error {
+func (verifier *BBSVerifier) VerifyProof(cred *credential.Credential, resolver *suite.PublicKeyResolver) error {
 	if cred.Proof == nil {
 		return fmt.Errorf("proof was empty")
 	}
@@ -37,26 +37,46 @@ func (verifier *BBSVerifier) VerifyProof(cred *credential.Credential) error {
 	switch x := cred.Proof.(type) {
 	case []interface{}:
 		for _, v := range x {
-			proofs = append(proofs, v.(*credential.Proof))
+			tmp := credential.Proof{}
+			cfg := &mapstructure.DecoderConfig{
+				Metadata: nil,
+				Result:   &tmp,
+				TagName:  "json",
+			}
+			decoder, _ := mapstructure.NewDecoder(cfg)
+			decoder.Decode(v)
+			proofs = append(proofs, &tmp)
 		}
+	case interface{}:
+		tmp := credential.Proof{}
+		cfg := &mapstructure.DecoderConfig{
+			Metadata: nil,
+			Result:   &tmp,
+			TagName:  "json",
+		}
+		decoder, _ := mapstructure.NewDecoder(cfg)
+		decoder.Decode(x)
+		proofs = append(proofs, &tmp)
 	case []*credential.Proof:
 		for _, v := range x {
 			proofs = append(proofs, v)
 		}
 	case *credential.Proof:
 		proofs = append(proofs, x)
+	case credential.Proof:
+		proofs = append(proofs, &x)
 	}
 	for _, p := range proofs {
 		pid, err := p.PublicKeyId()
 		if err != nil {
 			return err
 		}
-		pbk := verifier.resolver.Resolve(pid)
+		pbk := resolver.Resolve(pid)
 		if pbk == nil {
 			return fmt.Errorf("cannot resolve public key")
 		}
 		// get verify data
-		message, err := credential.CreateVerifyData(NewBBSSuite(nil, nil, false), cred, p)
+		message, err := credential.CreateVerifyData(cred, p)
 		if err != nil {
 			return err
 		}
@@ -77,10 +97,26 @@ func (verifier *BBSVerifier) VerifyProof(cred *credential.Credential) error {
 func getProofVerifyValue(p *credential.Proof) ([]byte, error) {
 
 	if p.SignatureRepresentation == 0 {
-		return p.ProofValue, nil
+
+		return decodeBase64(p.ProofValue)
 	} else if p.SignatureRepresentation == 1 {
 		return credential.GetJWTSignature(p.JWS)
 	}
 
 	return nil, fmt.Errorf("unsupported signature representation: %v", p.SignatureRepresentation)
+}
+
+func decodeBase64(s string) ([]byte, error) {
+	allEncodings := []*base64.Encoding{
+		base64.RawURLEncoding, base64.StdEncoding, base64.RawStdEncoding,
+	}
+
+	for _, encoding := range allEncodings {
+		value, err := encoding.DecodeString(s)
+		if err == nil {
+			return value, nil
+		}
+	}
+
+	return nil, errors.New("unsupported encoding")
 }
