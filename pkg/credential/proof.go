@@ -33,13 +33,21 @@ type Proof struct {
 	CapabilityChain []interface{} `json:"capabilityChain,omitempty"`
 }
 
-func NewProof(raw []byte) *Proof {
-	ret := &Proof{}
-	json.Unmarshal(raw, ret)
-	if len(ret.ProofValue) == 0 && ret.JWS == "" {
-		return nil
+func NewProof(ptype string) *Proof {
+	return &Proof{
+		Type: ptype,
 	}
-	return ret
+}
+
+func (p *Proof) Parse(raw []byte) error {
+	err := json.Unmarshal(raw, p)
+	if err != nil {
+		return err
+	}
+	if len(p.ProofValue) == 0 && p.JWS == "" {
+		return fmt.Errorf("invlaid raw data")
+	}
+	return err
 }
 
 func (p *Proof) Copy() *Proof {

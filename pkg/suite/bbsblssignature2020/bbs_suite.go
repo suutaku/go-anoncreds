@@ -2,6 +2,8 @@ package bbsblssignature2020
 
 import (
 	"crypto"
+	"encoding/base64"
+	"time"
 
 	"github.com/suutaku/go-anoncreds/pkg/credential"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
@@ -49,6 +51,23 @@ func NewBBSSuite(ver *BBSVerifier, sigr *BBSSigner, compated bool) *BBSSuite {
 // func (bbss *BBSSuite) GetDigest(doc []byte) []byte {
 // 	return doc
 // }
+
+func (bbss *BBSSuite) Sign(cred *credential.Credential) error {
+	cred.Proof = nil
+	docByte, err := credential.GetCanonicalDocument(cred)
+	if err != nil {
+		return err
+	}
+	sigBytes, err := bbss.Signer.Sign([][]byte{docByte})
+	if err != nil {
+		return err
+	}
+	proof := credential.NewProof("BbsBlsSignature2020")
+	proof.ProofPurpose = "assertionMethod"
+	proof.ProofValue = base64.RawStdEncoding.EncodeToString(sigBytes)
+	proof.Created = time.Now().String()
+	return nil
+}
 
 // Verify will verify signature against public key
 func (bbss *BBSSuite) Verify(pubKey crypto.PublicKey, doc []byte, signature []byte) error {
