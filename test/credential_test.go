@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/suutaku/go-anoncreds/pkg/credential"
+	"github.com/suutaku/go-anoncreds/pkg/vc"
 )
 
 // go test -v -run ^TestCredentail$ github.com/suutaku/go-anoncreds/test
 
 func TestCredentail(t *testing.T) {
-	cred := credential.NewCredential()
+	cred := vc.NewCredential()
 	cred.Parse([]byte(vcDoc))
 	b := cred.Bytes()
 

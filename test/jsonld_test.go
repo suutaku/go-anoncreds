@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"github.com/piprate/json-gold/ld"
-	"github.com/suutaku/go-anoncreds/pkg/credential"
+	"github.com/suutaku/go-anoncreds/pkg/vc"
 )
 
 func TestJsonLD(t *testing.T) {
-	cred := credential.NewCredential()
+	cred := vc.NewCredential()
 	cred.Parse([]byte(vcDoc))
 	processor := ld.NewJsonLdProcessor()
 	ldOptions := ld.NewJsonLdOptions("")

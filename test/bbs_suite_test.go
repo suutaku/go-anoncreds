@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/suutaku/go-anoncreds/pkg/credential"
+
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
+	"github.com/suutaku/go-anoncreds/pkg/vc"
 )
 
 func TestSuite(t *testing.T) {
@@ -17,11 +18,11 @@ func TestSuite(t *testing.T) {
 	// pkBytes = append(pkBytes, byte('a'))
 	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSVerifier(), nil, true)
 	//bbsSuite.Verify([]byte(vcDoc), suite.PublicKey{Type: bbsblssignature2020.SignatureType, Value: pkBytes})
-	cred := credential.NewCredential()
+	cred := vc.NewCredential()
 	cred.Parse([]byte(vcDoc))
 	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pkBytes, Type: "BbsBlsSignature2020"}, nil)
-	err = bbsSuite.VerifyProof(cred, resolver)
-	if err != nil {
-		panic(err)
-	}
+	builder := vc.NewVCBuilder()
+	builder.AddSuite(bbsSuite)
+	err = builder.Verify(cred, resolver)
+	require.NoError(t, err)
 }

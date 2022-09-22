@@ -1,7 +1,7 @@
 package bbsblssignature2020
 
 import (
-	"crypto/sha256"
+	"fmt"
 
 	"github.com/suutaku/go-bbs/pkg/bbs"
 )
@@ -12,18 +12,10 @@ type BBSSigner struct {
 }
 
 func NewBBSSigner(pk *bbs.PrivateKey) *BBSSigner {
-	ret := &BBSSigner{}
-	if pk == nil {
-		_, npk, err := bbs.GenerateKeyPair(sha256.New, nil)
-		if err != nil {
-			panic(err)
-		}
-		ret.pk = npk
-	} else {
-		ret.pk = pk
+	return &BBSSigner{
+		pk:   pk,
+		algo: bbs.NewBbs(),
 	}
-	ret.algo = bbs.NewBbs()
-	return ret
 }
 
 func (sig *BBSSigner) PrivateKey() *bbs.PrivateKey {
@@ -31,10 +23,16 @@ func (sig *BBSSigner) PrivateKey() *bbs.PrivateKey {
 }
 
 func (sig *BBSSigner) PublicKey() *bbs.PublicKey {
+	if sig.pk == nil {
+		return nil
+	}
 	return sig.pk.PublicKey()
 }
 
 func (sig *BBSSigner) Sign(msg [][]byte) ([]byte, error) {
+	if sig.pk == nil {
+		return nil, fmt.Errorf("private key was empty")
+	}
 	return sig.algo.SignWithKey(msg, sig.pk)
 }
 

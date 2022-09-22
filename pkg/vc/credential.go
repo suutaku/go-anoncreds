@@ -1,4 +1,4 @@
-package credential
+package vc
 
 import (
 	"encoding/json"

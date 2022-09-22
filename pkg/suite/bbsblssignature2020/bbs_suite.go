@@ -1,25 +1,26 @@
 package bbsblssignature2020
 
 import (
-	"crypto"
-	"encoding/base64"
-	"time"
+	"encoding/json"
+	"fmt"
 
-	"github.com/suutaku/go-anoncreds/pkg/credential"
+	"github.com/piprate/json-gold/ld"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
+	"github.com/suutaku/go-bbs/pkg/bbs"
 )
 
 const (
 	SignatureType = "BbsBlsSignature2020"
+	rdfDataSetAlg = "URDNA2015"
 )
 
 type BBSSuite struct {
-	Verifier       *BBSVerifier
-	Signer         *BBSSigner
+	Verifier       suite.Verifier
+	Signer         suite.Signer
 	CompactedProof bool
 }
 
-func NewBBSSuite(ver *BBSVerifier, sigr *BBSSigner, compated bool) *BBSSuite {
+func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigner, compated bool) *BBSSuite {
 	return &BBSSuite{
 		Verifier:       ver,
 		Signer:         sigr,
@@ -27,56 +28,51 @@ func NewBBSSuite(ver *BBSVerifier, sigr *BBSSigner, compated bool) *BBSSuite {
 	}
 }
 
-// // GetCanonicalDocument will return normalized/canonical version of the document
-// func (bbss *BBSSuite) GetCanonicalDocument(doc interface{}) ([]byte, error) {
-// 	ldOptions := ld.NewJsonLdOptions("")
-// 	ldOptions.ProcessingMode = ld.JsonLd_1_1
-// 	ldOptions.Algorithm = rdfDataSetAlg
-// 	ldOptions.Format = "application/n-quads"
-// 	ldOptions.ProduceGeneralizedRdf = true
-// 	view, err := bbss.jsonldProcessor.Normalize(doc, ldOptions)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to normalize JSON-LD document: %w", err)
-// 	}
-
-// 	result, ok := view.(string)
-// 	if !ok {
-// 		return nil, fmt.Errorf("failed to normalize JSON-LD document, invalid view")
-// 	}
-
-// 	return []byte(result), nil
-// }
-
-// // GetDigest returns document digest
-// func (bbss *BBSSuite) GetDigest(doc []byte) []byte {
-// 	return doc
-// }
-
-func (bbss *BBSSuite) Sign(cred *credential.Credential) error {
-	cred.Proof = nil
-	docByte, err := credential.GetCanonicalDocument(cred)
+// GetCanonicalDocument will return normalized/canonical version of the document
+func (bbss *BBSSuite) GetCanonicalDocument(doc interface{}) ([]byte, error) {
+	ldOptions := ld.NewJsonLdOptions("")
+	ldOptions.ProcessingMode = ld.JsonLd_1_1
+	ldOptions.Algorithm = rdfDataSetAlg
+	ldOptions.Format = "application/n-quads"
+	ldOptions.ProduceGeneralizedRdf = true
+	processor := ld.NewJsonLdProcessor()
+	docMap := make(map[string]interface{})
+	b, _ := json.Marshal(doc)
+	json.Unmarshal(b, &docMap)
+	view, err := processor.Normalize(docMap, ldOptions)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to normalize JSON-LD document: %w", err)
 	}
-	sigBytes, err := bbss.Signer.Sign([][]byte{docByte})
-	if err != nil {
-		return err
+
+	result, ok := view.(string)
+	if !ok {
+		return nil, fmt.Errorf("failed to normalize JSON-LD document, invalid view")
 	}
-	proof := credential.NewProof("BbsBlsSignature2020")
-	proof.ProofPurpose = "assertionMethod"
-	proof.ProofValue = base64.RawStdEncoding.EncodeToString(sigBytes)
-	proof.Created = time.Now().String()
-	return nil
+
+	return []byte(result), nil
+}
+
+// GetDigest returns document digest
+func (bbss *BBSSuite) GetDigest(doc []byte) []byte {
+	return doc
+}
+
+func (bbss *BBSSuite) Alg() string {
+	return SignatureType
+}
+
+func (bbss *BBSSuite) Sign(docByte []byte) ([]byte, error) {
+
+	return bbss.Signer.Sign([][]byte{docByte})
 }
 
 // Verify will verify signature against public key
-func (bbss *BBSSuite) Verify(pubKey crypto.PublicKey, doc []byte, signature []byte) error {
+func (bbss *BBSSuite) Verify(doc []byte, pubkeyBytes, signature []byte) error {
+	pubKey, err := bbs.UnmarshalPublicKey(pubkeyBytes)
+	if err != nil {
+		return err
+	}
 	return bbss.Verifier.Verify(pubKey, doc, signature)
-}
-
-// another compact method
-func (bbss *BBSSuite) VerifyProof(cred *credential.Credential, resolver *suite.PublicKeyResolver) error {
-	return bbss.Verifier.VerifyProof(cred, resolver)
 }
 
 // Accept registers this signature suite with the given signature type

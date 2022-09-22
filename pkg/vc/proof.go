@@ -1,4 +1,4 @@
-package credential
+package vc
 
 import (
 	"encoding/base64"
@@ -8,11 +8,17 @@ import (
 	"strings"
 
 	"github.com/piprate/json-gold/ld"
+	"github.com/suutaku/go-anoncreds/pkg/suite"
 )
 
 const (
 	securityContext        = "https://w3id.org/security/v2"
 	securityContextJWK2020 = "https://w3id.org/security/jws/v1"
+)
+
+const (
+	SignatureProofValue int = iota
+	SignatureJWS
 )
 
 // Proof is cryptographic proof of the integrity of the DID Document.
@@ -28,7 +34,7 @@ type Proof struct {
 	Domain                  string      `json:"domain,omitempty"`
 	Nonce                   []byte      `json:"nonce,omitempty"`
 	Challenge               string      `json:"challenge,omitempty"`
-	SignatureRepresentation int
+	SignatureRepresentation int         `json:"-"`
 	// CapabilityChain must be an array. Each element is either a string or an object.
 	CapabilityChain []interface{} `json:"capabilityChain,omitempty"`
 }
@@ -107,7 +113,7 @@ func excludedKeyFromString(s string) string {
 	return ""
 }
 
-func prepareCanonicalProofOptions(proofOptions *Proof) ([]byte, error) {
+func prepareCanonicalProofOptions(s suite.SignatureSuite, proofOptions *Proof) ([]byte, error) {
 	// if proofOptions.Created.IsZero() {
 	// 	return nil, fmt.Errorf("created is missing")
 	// }
@@ -126,7 +132,7 @@ func prepareCanonicalProofOptions(proofOptions *Proof) ([]byte, error) {
 	// }
 
 	// build canonical proof options
-	return GetCanonicalDocument(proofOptionsCopy)
+	return s.GetCanonicalDocument(proofOptionsCopy)
 }
 
 func getCompactedWithSecuritySchema(docMap interface{}) (map[string]interface{}, error) {
@@ -137,46 +143,46 @@ func getCompactedWithSecuritySchema(docMap interface{}) (map[string]interface{},
 	return ld.NewJsonLdProcessor().Compact(docMap, contextMap, opt)
 }
 
-func CreateVerifyData(cred *Credential, p *Proof) ([]byte, error) {
+func CreateVerifyData(s suite.SignatureSuite, cred *Credential, p *Proof) ([]byte, error) {
 	if p.SignatureRepresentation == 0 {
-		return CreateVerifyHash(cred, p)
+		return CreateVerifyHash(s, cred, p)
 	} else if p.SignatureRepresentation == 1 {
-		return CreateVerifyJWS(cred, p)
+		return CreateVerifyJWS(s, cred, p)
 	}
 	return nil, fmt.Errorf("unsupported signature representation: %v", p.SignatureRepresentation)
 }
 
 // CreateVerifyHash returns data that is used to generate or verify a digital signature
 // Algorithm steps are described here https://w3c-dvcg.github.io/ld-signatures/#create-verify-hash-algorithm
-func CreateVerifyHash(jsonldDoc *Credential, proofOptions *Proof) ([]byte, error) {
+func CreateVerifyHash(s suite.SignatureSuite, jsonldDoc *Credential, proofOptions *Proof) ([]byte, error) {
 
 	if proofOptions.Context == nil {
 		proofOptions.Context = jsonldDoc.Context
 	}
 
-	canonicalProofOptions, err := prepareCanonicalProofOptions(proofOptions)
+	canonicalProofOptions, err := prepareCanonicalProofOptions(s, proofOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	proofOptionsDigest := GetDigest(canonicalProofOptions)
+	proofOptionsDigest := s.GetDigest(canonicalProofOptions)
 
-	canonicalDoc, err := prepareCanonicalDocument(jsonldDoc)
+	canonicalDoc, err := prepareCanonicalDocument(s, jsonldDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	docDigest := GetDigest(canonicalDoc)
+	docDigest := s.GetDigest(canonicalDoc)
 
 	return append(proofOptionsDigest, docDigest...), nil
 }
 
-func prepareCanonicalDocument(jsonldObject *Credential) ([]byte, error) {
+func prepareCanonicalDocument(s suite.SignatureSuite, jsonldObject *Credential) ([]byte, error) {
 	// copy document object without proof
 	docCopy := jsonldObject.CopyWithoutProof()
 
 	// build canonical document
-	return GetCanonicalDocument(docCopy)
+	return s.GetCanonicalDocument(docCopy)
 }
 
 // GetCopyWithoutProof gets copy of JSON LD Object without proofs (signatures).
@@ -202,21 +208,21 @@ func GetCopyWithoutProof(jsonLdObject map[string]interface{}) map[string]interfa
 // It differs by using https://w3id.org/security/v2 as context for JSON-LD canonization of both
 // JSON and Signature documents and by preliminary JSON-LD compacting of JSON document.
 // The current implementation is based on the https://github.com/digitalbazaar/jsonld-signatures.
-func CreateVerifyJWS(jsonldDoc *Credential, p *Proof) ([]byte, error) {
+func CreateVerifyJWS(s suite.SignatureSuite, jsonldDoc *Credential, p *Proof) ([]byte, error) {
 
-	canonicalProofOptions, err := prepareJWSProof(p)
+	canonicalProofOptions, err := prepareJWSProof(s, p)
 	if err != nil {
 		return nil, err
 	}
 
-	proofOptionsDigest := GetDigest(canonicalProofOptions)
+	proofOptionsDigest := s.GetDigest(canonicalProofOptions)
 
-	canonicalDoc, err := prepareDocumentForJWS(jsonldDoc)
+	canonicalDoc, err := prepareDocumentForJWS(s, jsonldDoc)
 	if err != nil {
 		return nil, err
 	}
 
-	docDigest := GetDigest(canonicalDoc)
+	docDigest := s.GetDigest(canonicalDoc)
 
 	verifyData := append(proofOptionsDigest, docDigest...)
 
@@ -228,15 +234,30 @@ func CreateVerifyJWS(jsonldDoc *Credential, p *Proof) ([]byte, error) {
 	return append([]byte(jwtHeader+"."), verifyData...), nil
 }
 
-func prepareJWSProof(proofOptions *Proof) ([]byte, error) {
+func CreateDetachedJWTHeader(alg string) string {
+	jwtHeaderMap := map[string]interface{}{
+		"alg":  alg,
+		"b64":  false,
+		"crit": []string{"b64"},
+	}
+
+	jwtHeaderBytes, err := json.Marshal(jwtHeaderMap)
+	if err != nil {
+		panic(err)
+	}
+
+	return base64.RawURLEncoding.EncodeToString(jwtHeaderBytes)
+}
+
+func prepareJWSProof(s suite.SignatureSuite, proofOptions *Proof) ([]byte, error) {
 	// TODO proof contexts shouldn't be hardcoded in jws, should be passed in jsonld doc by author [Issue#1833]
 	proofOptions.Context = []interface{}{securityContext, securityContextJWK2020}
 	proofOptionsCopy := proofOptions.CopyWithoutSecuritySchemas()
 
-	return GetCanonicalDocument(proofOptionsCopy)
+	return s.GetCanonicalDocument(proofOptionsCopy)
 }
 
-func prepareDocumentForJWS(jsonldObject *Credential) ([]byte, error) {
+func prepareDocumentForJWS(s suite.SignatureSuite, jsonldObject *Credential) ([]byte, error) {
 	// copy document object without proof
 	doc := jsonldObject.CopyWithoutProof()
 
@@ -250,7 +271,7 @@ func prepareDocumentForJWS(jsonldObject *Credential) ([]byte, error) {
 	// }
 
 	// build canonical document
-	return GetCanonicalDocument(doc)
+	return s.GetCanonicalDocument(doc)
 }
 
 const (
@@ -276,4 +297,20 @@ func GetJWTSignature(jwt string) ([]byte, error) {
 	}
 
 	return base64.RawURLEncoding.DecodeString(jwtParts[jwtSignaturePart])
+}
+
+func AddProof(cred *Credential, p *Proof) error {
+	if cred.Proof != nil {
+		var proofs []interface{}
+		switch p := cred.Proof.(type) {
+		case []interface{}:
+			proofs = p
+		default:
+			proofs = []interface{}{p}
+		}
+		proofs = append(proofs, p)
+		cred.Proof = proofs
+	}
+	cred.Proof = p
+	return nil
 }
