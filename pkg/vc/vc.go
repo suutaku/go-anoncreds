@@ -159,11 +159,10 @@ func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver) error {
 		if p.SignatureRepresentation == SignatureJWS {
 			pubKeyValue = pbk.Jwk
 		}
-		err = suit.Verify(pubKeyValue, message, signature)
+		err = suit.Verify(message, pubKeyValue, signature)
 		if err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
@@ -194,7 +193,7 @@ func (builder *VCBuilder) AddLinkedDataProof(lcon *LinkedDataProofContext) error
 	return builder.build(context)
 }
 
-func (builder *VCBuilder) GenerateBBSSelectiveDIsclosure(revealDoc map[string]interface{}, pubKey *suite.PublicKey, nonce []byte) (*Credential, error) {
+func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc map[string]interface{}, pubKey *suite.PublicKey, nonce []byte) (*Credential, error) {
 	if builder.credential.Proof == nil {
 		return nil, fmt.Errorf("expected at least one proof present")
 	}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/piprate/json-gold/ld"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
-	"github.com/suutaku/go-bbs/pkg/bbs"
 )
 
 const (
@@ -20,7 +19,7 @@ type BBSSuite struct {
 	CompactedProof bool
 }
 
-func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigner, compated bool) *BBSSuite {
+func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigSigner, compated bool) *BBSSuite {
 	return &BBSSuite{
 		Verifier:       ver,
 		Signer:         sigr,
@@ -63,16 +62,12 @@ func (bbss *BBSSuite) Alg() string {
 
 func (bbss *BBSSuite) Sign(docByte []byte) ([]byte, error) {
 
-	return bbss.Signer.Sign([][]byte{docByte})
+	return bbss.Signer.Sign(splitMessageIntoLines(string(docByte), true))
 }
 
 // Verify will verify signature against public key
-func (bbss *BBSSuite) Verify(doc []byte, pubkeyBytes, signature []byte) error {
-	pubKey, err := bbs.UnmarshalPublicKey(pubkeyBytes)
-	if err != nil {
-		return err
-	}
-	return bbss.Verifier.Verify(pubKey, doc, signature)
+func (bbss *BBSSuite) Verify(doc, pubkeyBytes, signature []byte) error {
+	return bbss.Verifier.Verify(pubkeyBytes, doc, signature)
 }
 
 // Accept registers this signature suite with the given signature type

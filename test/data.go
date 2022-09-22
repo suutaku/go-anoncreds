@@ -33,12 +33,5 @@ var vcDoc = `{
 	  "commuterClassification": "C1",
 	  "birthCountry": "Bahamas",
 	  "birthDate": "1958-07-17"
-	},
-	"proof": {
-	  "type": "BbsBlsSignature2020",
-	  "created": "2020-10-07T16:38:09Z",
-	  "proofPurpose": "assertionMethod",
-	  "proofValue": "o/79UazZRsf3y35mZ8kT6hx2M2R1fGgj2puotSqeLiha5MGRmqHLx1JAQsG3JlJeW5n56Gg+xUKaDPfzyimi0V9ECloPIBJY+dIMjQE15PFAk+/wtnde9QY8cZOmTIiI56HuN6DwADIzo3BLwkL2RQ==",
-	  "verificationMethod": "did:example:489398593#test"
 	}
   }`

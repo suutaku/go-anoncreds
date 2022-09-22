@@ -1,7 +1,7 @@
 package test
 
 import (
-	"encoding/base64"
+	"crypto/sha256"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,20 +9,31 @@ import (
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
 	"github.com/suutaku/go-anoncreds/pkg/vc"
+	"github.com/suutaku/go-bbs/pkg/bbs"
 )
 
 func TestSuite(t *testing.T) {
-	pkBase64 := "h/rkcTKXXzRbOPr9UxSfegCbid2U/cVNXQUaKeGF7UhwrMJFP70uMH0VQ9+3+/2zDPAAjflsdeLkOXW3+ShktLxuPy8UlXSNgKNmkfb+rrj+FRwbs13pv/WsIf+eV66+"
-	pkBytes, err := base64.RawStdEncoding.DecodeString(pkBase64)
-	require.NoError(t, err)
-	// pkBytes = append(pkBytes, byte('a'))
-	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSVerifier(), nil, true)
-	//bbsSuite.Verify([]byte(vcDoc), suite.PublicKey{Type: bbsblssignature2020.SignatureType, Value: pkBytes})
 	cred := vc.NewCredential()
 	cred.Parse([]byte(vcDoc))
-	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pkBytes, Type: "BbsBlsSignature2020"}, nil)
-	builder := vc.NewVCBuilder()
+
+	pub, priv, err := bbs.GenerateKeyPair(sha256.New, nil)
+	require.NoError(t, err)
+	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), bbsblssignature2020.NewBBSSigner(priv), true)
+
+	pubKeyBytes, err := pub.Marshal()
+	require.NoError(t, err)
+	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
+	builder := vc.NewVCBuilder(cred)
 	builder.AddSuite(bbsSuite)
-	err = builder.Verify(cred, resolver)
+
+	// do sign
+	ldpContext := &vc.LinkedDataProofContext{
+		SignatureType:           "BbsBlsSignature2020",
+		SignatureRepresentation: vc.SignatureProofValue,
+		VerificationMethod:      "did:example:123456#key1",
+	}
+	err = builder.AddLinkedDataProof(ldpContext)
+	require.NoError(t, err)
+	err = builder.Verify(resolver)
 	require.NoError(t, err)
 }
