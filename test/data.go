@@ -35,3 +35,25 @@ var vcDoc = `{
 	  "birthDate": "1958-07-17"
 	}
   }`
+
+var revealJSON = `
+  {
+	"@context": [
+	  "https://www.w3.org/2018/credentials/v1",
+	  "https://w3id.org/citizenship/v1",
+	  "https://w3id.org/security/bbs/v1"
+	],
+	"type": ["VerifiableCredential", "PermanentResidentCard"],
+	"@explicit": true,
+	"identifier": {},
+	"issuer": {},
+	"issuanceDate": "",
+	"credentialSubject": {
+	  "@explicit": true,
+	  "type": ["PermanentResident", "Person"],
+	  "givenName": {},
+	  "familyName": {},
+	  "gender": {}
+	}
+  }
+  `

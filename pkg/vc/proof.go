@@ -14,6 +14,7 @@ import (
 const (
 	securityContext        = "https://w3id.org/security/v2"
 	securityContextJWK2020 = "https://w3id.org/security/jws/v1"
+	bbsBlsSignature2020    = "BbsBlsSignature2020"
 )
 
 const (
@@ -54,6 +55,19 @@ func (p *Proof) Parse(raw []byte) error {
 		return fmt.Errorf("invlaid raw data")
 	}
 	return err
+}
+
+func (p *Proof) ToMap() map[string]interface{} {
+	ret := make(map[string]interface{})
+	b, err := json.Marshal(p)
+	if err != nil {
+		return nil
+	}
+	err = json.Unmarshal(b, &ret)
+	if err != nil {
+		return nil
+	}
+	return ret
 }
 
 func (p *Proof) Copy() *Proof {
@@ -313,4 +327,16 @@ func AddProof(cred *Credential, p *Proof) error {
 	}
 	cred.Proof = p
 	return nil
+}
+
+func GetBlsProofs(rawProofs interface{}) []*Proof {
+	ret := make([]*Proof, 0)
+	allProofs := getProofs(rawProofs)
+	for _, p := range allProofs {
+		if strings.HasSuffix(p.Type, bbsBlsSignature2020) {
+			p.Context = securityContext
+			ret = append(ret, p)
+		}
+	}
+	return ret
 }

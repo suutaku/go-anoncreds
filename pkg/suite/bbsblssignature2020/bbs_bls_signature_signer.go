@@ -18,6 +18,10 @@ func NewBBSSigner(pk *bbs.PrivateKey) *BBSSigSigner {
 	}
 }
 
+func (sig *BBSSigSigner) BBS() *bbs.Bbs {
+	return sig.algo
+}
+
 func (sig *BBSSigSigner) PrivateKey() *bbs.PrivateKey {
 	return sig.pk
 }

@@ -2,9 +2,8 @@ package bbsblssignature2020
 
 import (
 	"encoding/json"
-	"fmt"
 
-	"github.com/piprate/json-gold/ld"
+	"github.com/suutaku/go-anoncreds/internal/jsonld"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 )
 
@@ -17,6 +16,7 @@ type BBSSuite struct {
 	Verifier       suite.Verifier
 	Signer         suite.Signer
 	CompactedProof bool
+	jsonldProcess  *jsonld.Processor
 }
 
 func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigSigner, compated bool) *BBSSuite {
@@ -24,31 +24,16 @@ func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigSigner, compated bool)
 		Verifier:       ver,
 		Signer:         sigr,
 		CompactedProof: compated,
+		jsonldProcess:  jsonld.NewProcessor(rdfDataSetAlg),
 	}
 }
 
 // GetCanonicalDocument will return normalized/canonical version of the document
 func (bbss *BBSSuite) GetCanonicalDocument(doc interface{}) ([]byte, error) {
-	ldOptions := ld.NewJsonLdOptions("")
-	ldOptions.ProcessingMode = ld.JsonLd_1_1
-	ldOptions.Algorithm = rdfDataSetAlg
-	ldOptions.Format = "application/n-quads"
-	ldOptions.ProduceGeneralizedRdf = true
-	processor := ld.NewJsonLdProcessor()
 	docMap := make(map[string]interface{})
 	b, _ := json.Marshal(doc)
 	json.Unmarshal(b, &docMap)
-	view, err := processor.Normalize(docMap, ldOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to normalize JSON-LD document: %w", err)
-	}
-
-	result, ok := view.(string)
-	if !ok {
-		return nil, fmt.Errorf("failed to normalize JSON-LD document, invalid view")
-	}
-
-	return []byte(result), nil
+	return bbss.jsonldProcess.GetCanonicalDocument(docMap)
 }
 
 // GetDigest returns document digest

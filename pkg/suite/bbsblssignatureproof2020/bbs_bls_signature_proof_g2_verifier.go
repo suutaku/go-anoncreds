@@ -1,11 +1,9 @@
 package bbsblssignatureproof2020
 
 import (
-	"crypto"
 	"fmt"
 	"strings"
 
-	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-bbs/pkg/bbs"
 )
 
@@ -22,10 +20,9 @@ func NewBBSG2SignatureProofVerifier(nonce []byte) *BBSG2SignatureProofVerifier {
 	}
 }
 
-func (verifier *BBSG2SignatureProofVerifier) Verify(pubKey crypto.PublicKey, doc, signature []byte) error {
-	keyBytes := pubKey.(*suite.PublicKey).Value
+func (verifier *BBSG2SignatureProofVerifier) Verify(pubkeyBytes, doc, signature []byte) error {
 
-	return verifier.algo.VerifyProof(splitMessageIntoLines(string(doc), true), signature, verifier.nonce, keyBytes)
+	return verifier.algo.VerifyProof(splitMessageIntoLines(string(doc), true), signature, verifier.nonce, pubkeyBytes)
 }
 
 func splitMessageIntoLines(msg string, transformBlankNodes bool) [][]byte {

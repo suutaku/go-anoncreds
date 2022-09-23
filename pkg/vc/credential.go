@@ -48,6 +48,27 @@ func NewCredential() *Credential {
 	return &Credential{}
 }
 
+func (cred *Credential) FromMap(data map[string]interface{}) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, cred)
+}
+
+func (cred *Credential) ToMap() map[string]interface{} {
+	ret := make(map[string]interface{})
+	b, err := json.Marshal(cred)
+	if err != nil {
+		return nil
+	}
+	err = json.Unmarshal(b, &ret)
+	if err != nil {
+		return nil
+	}
+	return ret
+}
+
 func (cred *Credential) Parse(raw []byte) error {
 	return json.Unmarshal(raw, cred)
 }

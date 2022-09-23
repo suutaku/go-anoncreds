@@ -3,6 +3,7 @@ module github.com/suutaku/go-anoncreds
 go 1.18
 
 require (
+	github.com/google/uuid v1.3.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/piprate/json-gold v0.4.1
 	github.com/stretchr/testify v1.8.0
