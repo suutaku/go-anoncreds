@@ -1,7 +1,6 @@
 package bbsblssignatureproof2020
 
 import (
-	"encoding/json"
 	"strings"
 
 	"github.com/suutaku/go-anoncreds/internal/jsonld"
@@ -15,36 +14,33 @@ const (
 )
 
 type BBSPSuite struct {
-	Verifier       suite.Verifier
-	Signer         suite.Signer
-	CompactedProof bool
-	jsonldProcess  *jsonld.Processor
+	Verifier        suite.Verifier
+	Signer          suite.Signer
+	CompactedProof  bool
+	jsonldProcessor *jsonld.Processor
 }
 
 func NewBBSPSuite(ver *BBSG2SignatureProofVerifier, sigr *BBSSigProofSigner, compated bool) *BBSPSuite {
 	return &BBSPSuite{
-		Verifier:       ver,
-		Signer:         sigr,
-		CompactedProof: compated,
-		jsonldProcess:  jsonld.NewProcessor(rdfDataSetAlg),
+		Verifier:        ver,
+		Signer:          sigr,
+		CompactedProof:  compated,
+		jsonldProcessor: jsonld.NewProcessor(rdfDataSetAlg),
 	}
 }
 
 // GetCanonicalDocument will return normalized/canonical version of the document
-func (bbss *BBSPSuite) GetCanonicalDocument(doc interface{}) ([]byte, error) {
-	docMap := make(map[string]interface{})
-	b, _ := json.Marshal(doc)
-	json.Unmarshal(b, &docMap)
-	if v, ok := docMap["type"]; ok {
+func (bbss *BBSPSuite) GetCanonicalDocument(doc map[string]interface{}, opts ...jsonld.ProcessorOpts) ([]byte, error) {
+	if v, ok := doc["type"]; ok {
 		docType, ok := v.(string)
 
 		if ok && strings.HasSuffix(docType, SignatureProofType) {
 			docType = strings.Replace(docType, SignatureProofType, SignatureType, 1)
-			docMap["type"] = docType
+			doc["type"] = docType
 		}
 	}
 
-	return bbss.jsonldProcess.GetCanonicalDocument(docMap)
+	return bbss.jsonldProcessor.GetCanonicalDocument(doc, opts...)
 }
 
 // GetDigest returns document digest
@@ -62,8 +58,8 @@ func (bbss *BBSPSuite) Sign(docByte []byte) ([]byte, error) {
 }
 
 // Verify will verify signature against public key
-func (bbss *BBSPSuite) Verify(doc, pubkeyBytes, signature []byte) error {
-	return bbss.Verifier.Verify(pubkeyBytes, doc, signature)
+func (bbss *BBSPSuite) Verify(doc, pubkeyBytes, proof []byte) error {
+	return bbss.Verifier.Verify(pubkeyBytes, doc, proof)
 }
 
 // Accept registers this signature suite with the given signature type

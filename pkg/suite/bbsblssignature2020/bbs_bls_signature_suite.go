@@ -29,11 +29,11 @@ func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigSigner, compated bool)
 }
 
 // GetCanonicalDocument will return normalized/canonical version of the document
-func (bbss *BBSSuite) GetCanonicalDocument(doc interface{}) ([]byte, error) {
+func (bbss *BBSSuite) GetCanonicalDocument(doc map[string]interface{}, opts ...jsonld.ProcessorOpts) ([]byte, error) {
 	docMap := make(map[string]interface{})
 	b, _ := json.Marshal(doc)
 	json.Unmarshal(b, &docMap)
-	return bbss.jsonldProcess.GetCanonicalDocument(docMap)
+	return bbss.jsonldProcess.GetCanonicalDocument(docMap, opts...)
 }
 
 // GetDigest returns document digest
@@ -46,7 +46,6 @@ func (bbss *BBSSuite) Alg() string {
 }
 
 func (bbss *BBSSuite) Sign(docByte []byte) ([]byte, error) {
-
 	return bbss.Signer.Sign(splitMessageIntoLines(string(docByte), true))
 }
 

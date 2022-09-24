@@ -20,9 +20,9 @@ func NewBBSG2SignatureProofVerifier(nonce []byte) *BBSG2SignatureProofVerifier {
 	}
 }
 
-func (verifier *BBSG2SignatureProofVerifier) Verify(pubkeyBytes, doc, signature []byte) error {
+func (verifier *BBSG2SignatureProofVerifier) Verify(pubkeyBytes, doc, proof []byte) error {
 
-	return verifier.algo.VerifyProof(splitMessageIntoLines(string(doc), true), signature, verifier.nonce, pubkeyBytes)
+	return verifier.algo.VerifyProof(splitMessageIntoLines(string(doc), true), proof, verifier.nonce, pubkeyBytes)
 }
 
 func splitMessageIntoLines(msg string, transformBlankNodes bool) [][]byte {

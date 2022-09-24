@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package jsonld
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -108,12 +107,7 @@ func (p *Processor) GetCanonicalDocument(doc map[string]interface{}, opts ...Pro
 	if len(procOptions.externalContexts) > 0 {
 		doc["@context"] = AppendExternalContexts(doc["@context"], procOptions.externalContexts...)
 	}
-
 	proc := ld.NewJsonLdProcessor()
-	b, _ := json.Marshal(doc)
-	if len(b) != 132 {
-		fmt.Println(len(b))
-	}
 	view, err := proc.Normalize(doc, ldOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to normalize JSON-LD document: %w", err)
@@ -160,7 +154,9 @@ func (p *Processor) Compact(input, context map[string]interface{},
 	ldOptions.ProcessingMode = ld.JsonLd_1_1
 	ldOptions.Format = format
 	ldOptions.ProduceGeneralizedRdf = true
-	ldOptions.DocumentLoader = procOptions.documentLoader
+	if procOptions.documentLoader != nil {
+		ldOptions.DocumentLoader = procOptions.documentLoader
+	}
 
 	if context == nil {
 		inputContext := input["@context"]
@@ -186,7 +182,9 @@ func (p *Processor) Frame(inputDoc map[string]interface{}, frameDoc map[string]i
 	ldOptions.Format = format
 	ldOptions.ProduceGeneralizedRdf = true
 	ldOptions.OmitGraph = true
-	ldOptions.DocumentLoader = procOptions.documentLoader
+	if procOptions.documentLoader != nil {
+		ldOptions.DocumentLoader = procOptions.documentLoader
+	}
 
 	proc := ld.NewJsonLdProcessor()
 
@@ -419,7 +417,9 @@ func fromRDF(docStatements []string, context interface{},
 	ldOptions.ProcessingMode = ld.JsonLd_1_1
 	ldOptions.Format = format
 	ldOptions.ProduceGeneralizedRdf = true
-	ldOptions.DocumentLoader = procOptions.documentLoader
+	if procOptions.documentLoader != nil {
+		ldOptions.DocumentLoader = procOptions.documentLoader
+	}
 
 	doc := strings.Join(docStatements, "\n")
 	proc := ld.NewJsonLdProcessor()
