@@ -16,7 +16,6 @@ import (
 var cred *vc.Credential
 var priv *bbs.PrivateKey
 var pubKeyBytes []byte
-var err error
 
 func TestLinkedDataProof(t *testing.T) {
 	cred = vc.NewCredential()
@@ -50,13 +49,20 @@ func TestSelectiveDisclosure(t *testing.T) {
 		bbsblssignatureproof2020.NewBBSG2SignatureProofVerifier([]byte("nonce")),
 		bbsblssignatureproof2020.NewBBSSigProofSigner(priv), true)
 
+	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), nil, true)
+
 	rev := vc.NewCredential()
 	err := rev.Parse([]byte(revealJSON))
 	require.NoError(t, err)
 
 	selectBuilder := vc.NewVCBuilder(cred)
 	selectBuilder.AddSuite(bbspsuite)
+	selectBuilder.AddSuite(bbsSuite)
 	disclu, err := selectBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, []byte("nonce"))
 	require.NoError(t, err)
-	t.Logf("%#v\n", disclu)
+	t.Logf("%#v\n", disclu.String())
+	// fmt.Println(disclu.String())
+	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
+	err = selectBuilder.Verify(resolver)
+	require.NoError(t, err)
 }

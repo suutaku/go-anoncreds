@@ -6,30 +6,9 @@ import (
 )
 
 const (
-	jsonldContext = "@context"
-	// jsonldType is key for proof type.
-	jsonldType = "type"
-	// jsonldCreator is key for creator.
-	jsonldCreator = "creator"
-	// jsonldCreated is key for time proof created.
-	jsonldCreated = "created"
-	// jsonldDomain is key for domain name.
-	jsonldDomain = "domain"
-	// jsonldNonce is key for nonce.
-	jsonldNonce = "nonce"
-	// jsonldProofValue is key for proof value.
-	jsonldProofValue = "proofValue"
-	// jsonldProofPurpose is a purpose of proof.
-	jsonldProofPurpose = "proofPurpose"
-	// jsonldJWSProof is key for JWS proof.
-	jsonldJWS = "jws"
-	// jsonldVerificationMethod is a key for verification method.
-	jsonldVerificationMethod = "verificationMethod"
-	// jsonldChallenge is a key for challenge.
-	jsonldChallenge = "challenge"
-	// jsonldCapabilityChain is a key for capabilityChain.
-	jsonldCapabilityChain = "capabilityChain"
-
+	jsonldContext        = "@context"
+	jsonldJWS            = "jws"
+	jsonldProofValue     = "proofValue"
 	ed25519Signature2020 = "Ed25519Signature2020"
 )
 
@@ -107,6 +86,11 @@ func (cred *Credential) Bytes() []byte {
 	return b
 }
 
+func (cred *Credential) String() string {
+	b, _ := json.MarshalIndent(cred, "", "\t")
+	return string(b)
+}
+
 func (cred *Credential) Copy() *Credential {
 	buf := bytes.Buffer{}
 	json.NewEncoder(&buf).Encode(cred)
@@ -114,24 +98,6 @@ func (cred *Credential) Copy() *Credential {
 	buf2 := bytes.NewBuffer(buf.Bytes())
 	json.NewDecoder(buf2).Decode(ret)
 	return ret
-	// return &Credential{
-	// 	Context: cred.Context,
-	// 	ID:      cred.ID,
-	// 	Type:    cred.Type,
-	// 	// Subject can be a string, map, slice of maps, struct (Subject or any custom), slice of structs.
-	// 	Subject:        cred.Subject,
-	// 	Issuer:         cred.Issuer,
-	// 	Issued:         cred.Issued,
-	// 	Expired:        cred.Expired,
-	// 	Proof:          cred.Proof,
-	// 	Status:         cred.Status,
-	// 	Schemas:        cred.Schemas,
-	// 	Evidence:       cred.Evidence,
-	// 	TermsOfUse:     cred.TermsOfUse,
-	// 	RefreshService: cred.RefreshService,
-	// 	JWT:            cred.JWT,
-	// 	CustomFields:   cred.CustomFields,
-	// }
 }
 
 func (cred *Credential) CopyWithoutProof() *Credential {
