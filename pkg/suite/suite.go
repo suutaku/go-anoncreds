@@ -1,12 +1,10 @@
 package suite
 
-import "github.com/suutaku/go-anoncreds/internal/jsonld"
-
 // SignatureSuite encapsulates signature suite methods required for signature verification.
 type SignatureSuite interface {
 
 	// GetCanonicalDocument will return normalized/canonical version of the document
-	GetCanonicalDocument(doc map[string]interface{}, opts ...jsonld.ProcessorOpts) ([]byte, error)
+	GetCanonicalDocument(doc map[string]interface{}) ([]byte, error)
 
 	// GetDigest returns document digest
 	GetDigest(doc []byte) []byte

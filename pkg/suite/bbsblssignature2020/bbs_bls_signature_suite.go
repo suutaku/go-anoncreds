@@ -1,10 +1,8 @@
 package bbsblssignature2020
 
 import (
-	"encoding/json"
-
-	"github.com/suutaku/go-anoncreds/internal/jsonld"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
+	"github.com/suutaku/go-vc/pkg/processor"
 )
 
 const (
@@ -16,7 +14,7 @@ type BBSSuite struct {
 	Verifier       suite.Verifier
 	Signer         suite.Signer
 	CompactedProof bool
-	jsonldProcess  *jsonld.Processor
+	jsonldProcess  *processor.JsonLDProcessor
 }
 
 func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigSigner, compated bool) *BBSSuite {
@@ -24,16 +22,15 @@ func NewBBSSuite(ver *BBSG2SignatureVerifier, sigr *BBSSigSigner, compated bool)
 		Verifier:       ver,
 		Signer:         sigr,
 		CompactedProof: compated,
-		jsonldProcess:  jsonld.NewProcessor(rdfDataSetAlg),
+		jsonldProcess:  processor.NewJsonLDProcessor(),
 	}
 }
 
 // GetCanonicalDocument will return normalized/canonical version of the document
-func (bbss *BBSSuite) GetCanonicalDocument(doc map[string]interface{}, opts ...jsonld.ProcessorOpts) ([]byte, error) {
-	docMap := make(map[string]interface{})
-	b, _ := json.Marshal(doc)
-	json.Unmarshal(b, &docMap)
-	return bbss.jsonldProcess.GetCanonicalDocument(docMap, opts...)
+func (bbss *BBSSuite) GetCanonicalDocument(doc map[string]interface{}) ([]byte, error) {
+
+	return bbss.jsonldProcess.GetCanonicalDocument(doc)
+
 }
 
 // GetDigest returns document digest

@@ -3,22 +3,21 @@ package bbsblsboundsignatureproof2020
 import (
 	"strings"
 
-	"github.com/suutaku/go-anoncreds/internal/jsonld"
 	"github.com/suutaku/go-anoncreds/internal/tools"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
+	"github.com/suutaku/go-vc/pkg/processor"
 )
 
 const (
 	SignatureType      = "BbsBlsBoundSignature2020"
 	SignatureProofType = "BbsBlsBoundSignatureproof2020"
-	rdfDataSetAlg      = "URDNA2015"
 )
 
 type BBSBPSuite struct {
 	Verifier        suite.Verifier
 	Signer          suite.Signer
 	CompactedProof  bool
-	jsonldProcessor *jsonld.Processor
+	jsonldProcessor *processor.JsonLDProcessor
 }
 
 func NewBBSPSuite(ver *BBSBG2SignatureProofVerifier, sigr *BBSBSigProofSigner, compated bool) *BBSBPSuite {
@@ -26,12 +25,12 @@ func NewBBSPSuite(ver *BBSBG2SignatureProofVerifier, sigr *BBSBSigProofSigner, c
 		Verifier:        ver,
 		Signer:          sigr,
 		CompactedProof:  compated,
-		jsonldProcessor: jsonld.NewProcessor(rdfDataSetAlg),
+		jsonldProcessor: processor.NewJsonLDProcessor(),
 	}
 }
 
 // GetCanonicalDocument will return normalized/canonical version of the document
-func (bbss *BBSBPSuite) GetCanonicalDocument(doc map[string]interface{}, opts ...jsonld.ProcessorOpts) ([]byte, error) {
+func (bbss *BBSBPSuite) GetCanonicalDocument(doc map[string]interface{}) ([]byte, error) {
 	if v, ok := doc["type"]; ok {
 		docType, ok := v.(string)
 
@@ -41,7 +40,7 @@ func (bbss *BBSBPSuite) GetCanonicalDocument(doc map[string]interface{}, opts ..
 		}
 	}
 
-	return bbss.jsonldProcessor.GetCanonicalDocument(doc, opts...)
+	return bbss.jsonldProcessor.GetCanonicalDocument(doc)
 }
 
 // GetDigest returns document digest
