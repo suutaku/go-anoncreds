@@ -1,55 +1,71 @@
 package test
 
-// var cred *vc.Credential
-// var priv *bbs.PrivateKey
-// var pubKeyBytes []byte
+import (
+	"crypto/sha256"
+	"testing"
 
-// func TestLinkedDataProof(t *testing.T) {
-// 	cred = builder.NewCredential()
-// 	cred.Parse([]byte(vcDoc))
+	"github.com/stretchr/testify/require"
+	"github.com/suutaku/go-anoncreds/pkg/builder"
+	"github.com/suutaku/go-anoncreds/pkg/suite"
+	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
+	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignatureproof2020"
+	"github.com/suutaku/go-bbs/pkg/bbs"
+	"github.com/suutaku/go-vc/pkg/credential"
+	"github.com/suutaku/go-vc/pkg/proof"
+)
 
-// 	pub, priv, err := bbs.GenerateKeyPair(sha256.New, nil)
-// 	require.NoError(t, err)
-// 	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), bbsblssignature2020.NewBBSSigner(priv), true)
+var cred *credential.Credential
+var priv *bbs.PrivateKey
+var pubKeyBytes []byte
 
-// 	pubKeyBytes, err = pub.Marshal()
-// 	require.NoError(t, err)
+func linkedDataProof(t *testing.T) {
+	cred = credential.NewCredential()
+	cred.FromBytes([]byte(vcDoc))
 
-// 	builder := vc.NewVCBuilder(cred)
-// 	builder.AddSuite(bbsSuite)
+	pub, priv, err := bbs.GenerateKeyPair(sha256.New, nil)
+	require.NoError(t, err)
+	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), bbsblssignature2020.NewBBSSigner(priv), true)
 
-// 	// do sign
-// 	ldpContext := &vc.LinkedDataProofContext{
-// 		SignatureType:           "BbsBlsSignature2020",
-// 		SignatureRepresentation: vc.SignatureProofValue,
-// 		VerificationMethod:      "did:example:123456#key1",
-// 	}
-// 	err = builder.AddLinkedDataProof(ldpContext)
-// 	require.NoError(t, err)
-// 	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
-// 	err = builder.Verify(resolver)
-// 	require.NoError(t, err)
-// }
+	pubKeyBytes, err = pub.Marshal()
+	require.NoError(t, err)
 
-// func TestSelectiveDisclosure(t *testing.T) {
-// 	bbspsuite := bbsblssignatureproof2020.NewBBSPSuite(
-// 		bbsblssignatureproof2020.NewBBSG2SignatureProofVerifier([]byte("nonce")),
-// 		bbsblssignatureproof2020.NewBBSSigProofSigner(priv), true)
+	builder := builder.NewVCBuilder(cred)
+	builder.AddSuite(bbsSuite)
 
-// 	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), nil, true)
+	// do sign
+	ldpContext := &proof.LinkedDataProofContext{
+		SignatureType:           "BbsBlsSignature2020",
+		SignatureRepresentation: proof.SignatureProofValue,
+		VerificationMethod:      "did:example:123456#key1",
+	}
+	err = builder.AddLinkedDataProof(ldpContext)
+	require.NoError(t, err)
+	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
+	err = builder.Verify(resolver)
+	require.NoError(t, err)
+	t.Log(cred.ToString())
+}
 
-// 	rev := vc.NewCredential()
-// 	err := rev.Parse([]byte(revealJSON))
-// 	require.NoError(t, err)
+func TestSelectiveDisclosure(t *testing.T) {
+	linkedDataProof(t)
+	bbspsuite := bbsblssignatureproof2020.NewBBSPSuite(
+		bbsblssignatureproof2020.NewBBSG2SignatureProofVerifier([]byte("nonce")),
+		bbsblssignatureproof2020.NewBBSSigProofSigner(priv), true)
 
-// 	selectBuilder := vc.NewVCBuilder(cred)
-// 	selectBuilder.AddSuite(bbspsuite)
-// 	selectBuilder.AddSuite(bbsSuite)
-// 	disclu, err := selectBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, []byte("nonce"))
-// 	require.NoError(t, err)
-// 	t.Logf("%#v\n", disclu.String())
-// 	// fmt.Println(disclu.String())
-// 	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
-// 	err = selectBuilder.Verify(resolver)
-// 	require.NoError(t, err)
-// }
+	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), nil, true)
+
+	rev := credential.NewCredential()
+	err := rev.FromBytes([]byte(revealJSON))
+	require.NoError(t, err)
+
+	selectBuilder := builder.NewVCBuilder(cred)
+	selectBuilder.AddSuite(bbspsuite)
+	selectBuilder.AddSuite(bbsSuite)
+	disclu, err := selectBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, []byte("nonce"))
+	require.NoError(t, err)
+	t.Logf("%s\n", disclu.ToBytes())
+	// fmt.Println(disclu.String())
+	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
+	err = selectBuilder.Verify(resolver)
+	require.NoError(t, err)
+}

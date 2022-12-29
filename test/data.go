@@ -45,15 +45,15 @@ var revealJSON = `
 	],
 	"type": ["VerifiableCredential", "PermanentResidentCard"],
 	"@explicit": true,
-	"identifier": {},
-	"issuer": {},
-	"issuanceDate": "",
+	"issuer": "did:example:489398593",
+	"identifier": "83627465",
+	"issuanceDate": "2019-12-03T12:19:52Z",
 	"credentialSubject": {
 	  "@explicit": true,
 	  "type": ["PermanentResident", "Person"],
-	  "givenName": {},
-	  "familyName": {},
-	  "gender": {}
+	  "givenName": "JOHN",
+	  "familyName": "SMITH",
+	  "gender": "Male"
 	}
   }
   `
