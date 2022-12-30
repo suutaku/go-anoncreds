@@ -19,34 +19,34 @@ const (
 )
 
 func (builder *VCBuilder) prepareCanonicalProofOptions(s suite.SignatureSuite, pOtions *proof.Proof) ([]byte, error) {
-	pOtions.Context = []string{proof.SecurityContext, proof.SecurityContextJWK2020}
-	copyVal := pOtions.ToMapWithoutProofValue()
-
+	docCpy := pOtions.ToMapWithoutProofValue()
+	delete(docCpy, "proofValue")
+	delete(docCpy, "jws")
+	delete(docCpy, "id")
+	delete(docCpy, "nonce")
 	if s.CompactProof() {
-		contextMap := map[string]interface{}{
-			"@context": proof.SecurityContext,
-		}
-		docCompacted, err := builder.processor.GetCompactedDocument(copyVal, contextMap)
+		docCompacted, err := builder.getCompactedWithSecuritySchema()
 		if err != nil {
 			return nil, err
 		}
-		copyVal = docCompacted
+		delete(docCompacted, "proofValue")
+		delete(docCompacted, "jws")
+		delete(docCompacted, "id")
+		delete(docCompacted, "nonce")
+		docCpy = docCompacted
 	}
 
-	// clear jws and proofValue
-	delete(copyVal, jsonldJWS)
-	delete(copyVal, jsonldProofValue)
-	return s.GetCanonicalDocument(copyVal)
+	return s.GetCanonicalDocument(docCpy, builder.processorOpts...)
 }
 
 func (builder *VCBuilder) prepareCanonicalProofOptionsJWS(s suite.SignatureSuite, pOtions *proof.Proof) ([]byte, error) {
 	pCpy := pOtions.ToMapWithoutProofValue()
-	return s.GetCanonicalDocument(pCpy)
+	return s.GetCanonicalDocument(pCpy, builder.processorOpts...)
 }
 
 func (builder *VCBuilder) prepareCanonicalDocument(s suite.SignatureSuite) ([]byte, error) {
 	docCpy := builder.credential.ToMapWithoutProof()
-	return s.GetCanonicalDocument(docCpy)
+	return s.GetCanonicalDocument(docCpy, builder.processorOpts...)
 }
 
 func (builder *VCBuilder) prepareCanonicalDocumentJWS(s suite.SignatureSuite) ([]byte, error) {
@@ -60,7 +60,7 @@ func (builder *VCBuilder) prepareCanonicalDocumentJWS(s suite.SignatureSuite) ([
 
 		docCpy = docCompacted
 	}
-	return s.GetCanonicalDocument(docCpy)
+	return s.GetCanonicalDocument(docCpy, builder.processorOpts...)
 }
 
 func (builder *VCBuilder) CreateVerifyJWS(s suite.SignatureSuite, p *proof.Proof) ([]byte, error) {

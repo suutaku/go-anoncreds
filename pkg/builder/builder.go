@@ -1,10 +1,8 @@
 package builder
 
 import (
-	"encoding/base64"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignatureproof2020"
 	"github.com/suutaku/go-vc/pkg/credential"
@@ -17,15 +15,15 @@ const defaultProofPurpose = "assertionMethod"
 type VCBuilder struct {
 	signatureSuite map[string]suite.SignatureSuite
 	credential     *credential.Credential
-	processor      *processor.JsonLDProcessor
 	jwt            *proof.Jwt
+	processorOpts  []processor.ProcessorOpts
 }
 
-func NewVCBuilder(cred *credential.Credential) *VCBuilder {
+func NewVCBuilder(cred *credential.Credential, opts ...processor.ProcessorOpts) *VCBuilder {
 	return &VCBuilder{
 		signatureSuite: make(map[string]suite.SignatureSuite),
 		credential:     cred,
-		processor:      processor.NewJsonLDProcessor(),
+		processorOpts:  opts,
 	}
 }
 
@@ -78,7 +76,6 @@ func (builder *VCBuilder) build(context *proof.Context) error {
 	if err != nil {
 		return err
 	}
-	logrus.Warn("debug ", base64.RawURLEncoding.EncodeToString(sig))
 	p.ApplySignatureValue(context, sig)
 
 	return builder.credential.AddProof(p)
@@ -96,11 +93,12 @@ func (builder *VCBuilder) createVerifyData(s suite.SignatureSuite, p *proof.Proo
 }
 
 func (builder *VCBuilder) createVerifyHash(s suite.SignatureSuite, p *proof.Proof) ([]byte, error) {
-
-	if p.Context == nil {
-		p.Context = builder.credential.Context
+	pcy := &proof.Proof{}
+	pcy.FromBytes(p.ToBytes())
+	if pcy.Context == nil {
+		pcy.Context = builder.credential.Context
 	}
-	canonicalProofOptions, err := builder.prepareCanonicalProofOptions(s, p)
+	canonicalProofOptions, err := builder.prepareCanonicalProofOptions(s, pcy)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +122,7 @@ func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver) error {
 	if builder.credential.Proof == nil {
 		return fmt.Errorf("proof was empty")
 	}
-	proofs, err := builder.credential.GetProofs()
+	proofs, err := credential.GetProofs(builder.credential.Proof)
 	if err != nil {
 		return err
 	}
@@ -167,12 +165,11 @@ func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.C
 	if err != nil {
 		return nil, fmt.Errorf("preparing doc failed: %w", err)
 	}
-
-	blsSignatures, err := builder.credential.GetBLSProofs()
+	blsSignatures, err := credential.GetBLSProofs(docWithoutProof["proof"])
 	if err != nil {
 		return nil, fmt.Errorf("get BLS proofs: %w", err)
 	}
-
+	delete(docWithoutProof, "proof")
 	if len(blsSignatures) == 0 {
 		return nil, fmt.Errorf("no BbsBlsSignature2020 proof present")
 	}

@@ -7,16 +7,17 @@ import (
 
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignatureproof2020"
+	"github.com/suutaku/go-vc/pkg/processor"
 	"github.com/suutaku/go-vc/pkg/proof"
 	"github.com/suutaku/go-vc/pkg/utils"
 )
 
 func (builder *VCBuilder) getCompactedWithSecuritySchema() (map[string]interface{}, error) {
-	docCpy := builder.credential.ToMapWithoutProof()
+	docCpy := builder.credential.ToMap()
 	contextMap := map[string]interface{}{
 		"@context": proof.SecurityContext,
 	}
-	return builder.processor.GetCompactedDocument(docCpy, contextMap)
+	return processor.Default().Compact(docCpy, contextMap, builder.processorOpts...)
 }
 
 func getPublicKeyAndSignature(pmap map[string]interface{}, resolver *suite.PublicKeyResolver) ([]byte, []byte, error) {
@@ -82,7 +83,7 @@ type verificationData struct {
 
 func (builder *VCBuilder) buildDocVerificationData(docCompacted, revealDoc map[string]interface{}) (*docVerificationData, error) {
 	// create verify document data
-	docBytes, err := builder.processor.GetCanonicalDocument(docCompacted)
+	docBytes, err := processor.Default().GetCanonicalDocument(docCompacted, builder.processorOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,16 +91,16 @@ func (builder *VCBuilder) buildDocVerificationData(docCompacted, revealDoc map[s
 	transformedStatements := make([]string, len(documentStatements))
 
 	for i, row := range documentStatements {
-		transformedStatements[i] = builder.processor.TransformBlankNode(row)
+		transformedStatements[i] = processor.TransformBlankNode(row)
 	}
-
-	revealDocumentResult, err := builder.processor.Frame(docCompacted, revealDoc)
+	newOpts := append(builder.processorOpts, processor.WithFrameBlankNodes())
+	revealDocumentResult, err := processor.Default().Frame(docCompacted, revealDoc, newOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("frame doc with reveal doc: %w", err)
 	}
 
 	// create verify reveal data
-	docBytes, err = builder.processor.GetCanonicalDocument(revealDocumentResult)
+	docBytes, err = processor.Default().GetCanonicalDocument(revealDocumentResult, builder.processorOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +135,7 @@ func (builder *VCBuilder) createVerifyProofData(proofMap map[string]interface{})
 		}
 	}
 
-	proofBytes, err := builder.processor.GetCanonicalDocument(proofMapCopy)
+	proofBytes, err := processor.Default().GetCanonicalDocument(proofMapCopy, builder.processorOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +183,6 @@ func generateSignatureProof(blsSignature map[string]interface{}, resolver *suite
 	if pErr != nil {
 		return nil, fmt.Errorf("get public key and signature: %w", pErr)
 	}
-	fmt.Println("debug2 ", base64.RawURLEncoding.EncodeToString(signatureBytes))
 	signatureProofBytes, err := s.(*bbsblssignatureproof2020.BBSPSuite).SelectiveDisclosure(verData.blsMessages, signatureBytes,
 		nonce, pubKeyBytes, verData.revealIndexes)
 	if err != nil {

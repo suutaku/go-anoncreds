@@ -17,7 +17,7 @@ type BBSBSuite struct {
 	Verifier       suite.Verifier
 	Signer         suite.Signer
 	CompactedProof bool
-	jsonldProcess  *processor.JsonLDProcessor
+	jsonldProcess  *processor.Processor
 }
 
 func NewBBSSuite(ver *BBSBG2SignatureVerifier, sigr *BBSBSigSigner, compated bool) *BBSBSuite {
@@ -25,7 +25,7 @@ func NewBBSSuite(ver *BBSBG2SignatureVerifier, sigr *BBSBSigSigner, compated boo
 		Verifier:       ver,
 		Signer:         sigr,
 		CompactedProof: compated,
-		jsonldProcess:  processor.NewJsonLDProcessor(),
+		jsonldProcess:  processor.Default(),
 	}
 }
 
@@ -34,7 +34,7 @@ func (bbss *BBSBSuite) GetCanonicalDocument(doc map[string]interface{}) ([]byte,
 	docMap := make(map[string]interface{})
 	b, _ := json.Marshal(doc)
 	json.Unmarshal(b, &docMap)
-	return bbss.jsonldProcess.GetCanonicalDocument(docMap)
+	return bbss.jsonldProcess.GetCanonicalDocument(docMap, processor.WithValidateRDF())
 }
 
 // GetDigest returns document digest

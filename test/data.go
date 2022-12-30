@@ -48,6 +48,7 @@ var revealJSON = `
 	"issuer": "did:example:489398593",
 	"identifier": "83627465",
 	"issuanceDate": "2019-12-03T12:19:52Z",
+	"expirationDate": "2029-12-03T12:19:52Z",
 	"credentialSubject": {
 	  "@explicit": true,
 	  "type": ["PermanentResident", "Person"],

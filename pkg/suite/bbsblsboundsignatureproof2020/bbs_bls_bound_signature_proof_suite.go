@@ -17,7 +17,7 @@ type BBSBPSuite struct {
 	Verifier        suite.Verifier
 	Signer          suite.Signer
 	CompactedProof  bool
-	jsonldProcessor *processor.JsonLDProcessor
+	jsonldProcessor *processor.Processor
 }
 
 func NewBBSPSuite(ver *BBSBG2SignatureProofVerifier, sigr *BBSBSigProofSigner, compated bool) *BBSBPSuite {
@@ -25,12 +25,12 @@ func NewBBSPSuite(ver *BBSBG2SignatureProofVerifier, sigr *BBSBSigProofSigner, c
 		Verifier:        ver,
 		Signer:          sigr,
 		CompactedProof:  compated,
-		jsonldProcessor: processor.NewJsonLDProcessor(),
+		jsonldProcessor: processor.Default(),
 	}
 }
 
 // GetCanonicalDocument will return normalized/canonical version of the document
-func (bbss *BBSBPSuite) GetCanonicalDocument(doc map[string]interface{}) ([]byte, error) {
+func (bbss *BBSBPSuite) GetCanonicalDocument(doc map[string]interface{}, opts ...processor.ProcessorOpts) ([]byte, error) {
 	if v, ok := doc["type"]; ok {
 		docType, ok := v.(string)
 
@@ -40,7 +40,7 @@ func (bbss *BBSBPSuite) GetCanonicalDocument(doc map[string]interface{}) ([]byte
 		}
 	}
 
-	return bbss.jsonldProcessor.GetCanonicalDocument(doc)
+	return bbss.jsonldProcessor.GetCanonicalDocument(doc, opts...)
 }
 
 // GetDigest returns document digest

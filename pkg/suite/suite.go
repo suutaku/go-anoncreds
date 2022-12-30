@@ -1,10 +1,12 @@
 package suite
 
+import "github.com/suutaku/go-vc/pkg/processor"
+
 // SignatureSuite encapsulates signature suite methods required for signature verification.
 type SignatureSuite interface {
 
 	// GetCanonicalDocument will return normalized/canonical version of the document
-	GetCanonicalDocument(doc map[string]interface{}) ([]byte, error)
+	GetCanonicalDocument(doc map[string]interface{}, opts ...processor.ProcessorOpts) ([]byte, error)
 
 	// GetDigest returns document digest
 	GetDigest(doc []byte) []byte
