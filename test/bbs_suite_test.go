@@ -44,7 +44,6 @@ func linkedDataProof(t *testing.T) {
 	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
 	err = builder.Verify(resolver)
 	require.NoError(t, err)
-	t.Log(cred.ToString())
 }
 
 func TestSelectiveDisclosure(t *testing.T) {
@@ -64,7 +63,9 @@ func TestSelectiveDisclosure(t *testing.T) {
 	selectBuilder.AddSuite(bbsSuite)
 	disclu, err := selectBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, []byte("nonce"))
 	require.NoError(t, err)
-	t.Logf("%s\n", disclu.ToString())
+	require.Empty(t, disclu.Issued)
+	require.NotEmpty(t, disclu.Expired)
+	// t.Logf("%s\n", disclu.ToString())
 	// fmt.Println(disclu.String())
 	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
 	discluBuilder := builder.NewVCBuilder(disclu, processor.WithValidateRDF())
