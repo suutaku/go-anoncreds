@@ -6,6 +6,7 @@ import (
 	"github.com/suutaku/go-anoncreds/internal/tools"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-vc/pkg/processor"
+	"github.com/suutaku/go-vc/pkg/proof"
 )
 
 const (
@@ -74,4 +75,9 @@ func (bbss *BBSBPSuite) CompactProof() bool {
 
 func (bbs *BBSBPSuite) SelectiveDisclosure(blsMessages [][]byte, signature, nonce, pubKeyBytes []byte, revIndexes []int) ([]byte, error) {
 	return bbs.Signer.(*BBSBSigProofSigner).DeriveProof(blsMessages, signature, nonce, pubKeyBytes, revIndexes)
+}
+
+func (bbss *BBSBPSuite) CreateVerifyData(jsonldDoc map[string]interface{}, p *proof.Proof,
+	opts ...processor.ProcessorOpts) ([]byte, error) {
+	panic("bbsblssignatureproof2020 have no implementation of CreateVerifyData")
 }

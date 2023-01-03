@@ -15,7 +15,6 @@ const defaultProofPurpose = "assertionMethod"
 type VCBuilder struct {
 	signatureSuite map[string]suite.SignatureSuite
 	credential     *credential.Credential
-	jwt            *proof.Jwt
 	processorOpts  []processor.ProcessorOpts
 }
 
@@ -32,87 +31,17 @@ func (builder *VCBuilder) AddSuite(s suite.SignatureSuite) {
 }
 
 func (builder *VCBuilder) AddLinkedDataProof(lcon *proof.LinkedDataProofContext) error {
-	return builder.build(lcon.ToContext())
-}
-
-func (builder *VCBuilder) build(context *proof.Context) error {
-	// validation of context
-	if err := context.Validate(); err != nil {
-		return err
-	}
-
 	// get signature suit
-	suit := builder.signatureSuite[context.SignatureType]
+	suit := builder.signatureSuite[lcon.SignatureType]
 	if suit == nil {
-		return fmt.Errorf("cannot get signature suite with type: %s", context.SignatureType)
+		return fmt.Errorf("cannot get signature suite with type: %s", lcon.SignatureType)
 	}
-
-	// construct proof
-	p := &proof.Proof{
-		Type:                    context.SignatureType,
-		SignatureRepresentation: context.SignatureRepresentation,
-		Creator:                 context.Creator,
-		Created:                 context.Created,
-		Domain:                  context.Domain,
-		Nonce:                   context.Nonce,
-		VerificationMethod:      context.VerificationMethod,
-		Challenge:               context.Challenge,
-		ProofPurpose:            context.Purpose,
-		CapabilityChain:         context.CapabilityChain,
-	}
-
-	if p.ProofPurpose == "" {
-		p.ProofPurpose = defaultProofPurpose
-	}
-
-	if context.SignatureRepresentation == proof.SignatureJWS {
-		p.JWS = builder.jwt.NewHeader(suit.Alg() + "..")
-	}
-	message, err := builder.createVerifyData(suit, p)
+	sigedDoc, err := suit.AddLinkedDataProof(lcon, builder.credential)
 	if err != nil {
 		return err
 	}
-	sig, err := suit.Sign(message)
-	if err != nil {
-		return err
-	}
-	p.ApplySignatureValue(context, sig)
-
-	return builder.credential.AddProof(p)
-}
-
-func (builder *VCBuilder) createVerifyData(s suite.SignatureSuite, p *proof.Proof) ([]byte, error) {
-	switch p.SignatureRepresentation {
-	case proof.SignatureProofValue:
-		return builder.createVerifyHash(s, p)
-	case proof.SignatureJWS:
-		return builder.CreateVerifyJWS(s, p)
-	}
-
-	return nil, fmt.Errorf("unsupported signature representation: %v", p.SignatureRepresentation)
-}
-
-func (builder *VCBuilder) createVerifyHash(s suite.SignatureSuite, p *proof.Proof) ([]byte, error) {
-	pcy := &proof.Proof{}
-	pcy.FromBytes(p.ToBytes())
-	if pcy.Context == nil {
-		pcy.Context = builder.credential.Context
-	}
-	canonicalProofOptions, err := builder.prepareCanonicalProofOptions(s, pcy)
-	if err != nil {
-		return nil, err
-	}
-
-	proofOptionsDigest := s.GetDigest(canonicalProofOptions)
-
-	canonicalDoc, err := builder.prepareCanonicalDocument(s)
-	if err != nil {
-		return nil, err
-	}
-
-	docDigest := s.GetDigest(canonicalDoc)
-
-	return append(proofOptionsDigest, docDigest...), nil
+	builder.credential = sigedDoc
+	return nil
 }
 
 func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver) error {
@@ -132,16 +61,7 @@ func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver) error {
 		if suit == nil {
 			return fmt.Errorf("cannot get singanture suite for type: %s", pm["type"].(string))
 		}
-		// get verify data
-		message, err := builder.createVerifyData(suit, p)
-		if err != nil {
-			return err
-		}
-		pubKeyValue, signature, err := getPublicKeyAndSignature(pm, resolver)
-		if err != nil {
-			return err
-		}
-		err = suit.Verify(message, pubKeyValue, signature)
+		err = suit.Verify(builder.credential, p, resolver)
 		if err != nil {
 			return err
 		}
@@ -149,7 +69,7 @@ func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver) error {
 	return nil
 
 }
-func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.Credential, pubKey *suite.PublicKey, nonce []byte) (*credential.Credential, error) {
+func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.Credential, pubKey *suite.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
 	if builder.credential == nil {
 		return nil, fmt.Errorf("no credential parsed")
 	}
@@ -161,44 +81,6 @@ func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.C
 		return nil, fmt.Errorf("expected at least one signature suit present")
 	}
 
-	docWithoutProof, err := builder.getCompactedWithSecuritySchema()
-	if err != nil {
-		return nil, fmt.Errorf("preparing doc failed: %w", err)
-	}
-	blsSignatures, err := credential.GetBLSProofs(docWithoutProof["proof"])
-	if err != nil {
-		return nil, fmt.Errorf("get BLS proofs: %w", err)
-	}
-	delete(docWithoutProof, "proof")
-	if len(blsSignatures) == 0 {
-		return nil, fmt.Errorf("no BbsBlsSignature2020 proof present")
-	}
-
-	docVerData, pErr := builder.buildDocVerificationData(docWithoutProof, revealDoc.ToMap())
-	if pErr != nil {
-		return nil, fmt.Errorf("build document verification data: %w", pErr)
-	}
-
-	proofs := make([]map[string]interface{}, len(blsSignatures))
-
-	for i, blsSignature := range blsSignatures {
-		verData, dErr := builder.buildVerificationData(blsSignature, docVerData)
-		if dErr != nil {
-			return nil, fmt.Errorf("build verification data: %w", dErr)
-		}
-		resolver := suite.NewPublicKeyResolver(pubKey, nil)
-		derivedProof, dErr := generateSignatureProof(blsSignature, resolver, nonce, verData, s)
-		if dErr != nil {
-			return nil, fmt.Errorf("generate signature proof: %w", dErr)
-		}
-
-		proofs[i] = derivedProof
-	}
-
-	revealDocumentResult := docVerData.revealDocumentResult
-	revealDocumentResult["proof"] = proofs
-	ret := credential.NewCredential()
-	ret.FromMap(revealDocumentResult)
-	return ret, nil
+	return s.SelectiveDisclosure(builder.credential, revealDoc, pubKey, nonce, opts...)
 
 }
