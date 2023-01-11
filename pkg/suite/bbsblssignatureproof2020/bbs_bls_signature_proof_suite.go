@@ -8,6 +8,7 @@ import (
 	"github.com/suutaku/go-anoncreds/internal/tools"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
+	"github.com/suutaku/go-bbs/pkg/bbs"
 	"github.com/suutaku/go-vc/pkg/credential"
 	"github.com/suutaku/go-vc/pkg/processor"
 	"github.com/suutaku/go-vc/pkg/proof"
@@ -27,10 +28,10 @@ type BBSPSuite struct {
 	jsonldProcessor *processor.Processor
 }
 
-func NewBBSPSuite(ver *BBSG2SignatureProofVerifier, sigr *BBSSigProofSigner, compated bool) *BBSPSuite {
+func NewBBSPSuite(priv *bbs.PrivateKey, compated bool) *BBSPSuite {
 	return &BBSPSuite{
-		verifier:        ver,
-		signer:          sigr,
+		verifier:        NewBBSG2SignatureProofVerifier(),
+		signer:          NewBBSSigProofSigner(priv),
 		CompactedProof:  compated,
 		jsonldProcessor: processor.Default(),
 	}
@@ -65,7 +66,7 @@ func (bbss *BBSPSuite) Sign(docByte []byte) ([]byte, error) {
 }
 
 // Verify will verify signature against public key
-func (bbss *BBSPSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver *suite.PublicKeyResolver, opts ...processor.ProcessorOpts) error {
+func (bbss *BBSPSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver *suite.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
 
 	// get verify data
 	message, err := bbsblssignature2020.CreateVerifyData(bbss, doc.ToMap(), p, opts...)
@@ -76,7 +77,7 @@ func (bbss *BBSPSuite) Verify(doc *credential.Credential, p *proof.Proof, resolv
 	if err != nil {
 		return err
 	}
-	return bbss.Verifier().Verify(pubKeyValue, message, signature)
+	return bbss.Verifier().Verify(pubKeyValue, message, signature, nonce)
 }
 
 // Accept registers this signature suite with the given signature type

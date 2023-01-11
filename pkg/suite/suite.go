@@ -20,7 +20,7 @@ type SignatureSuite interface {
 	Sign(doc []byte) ([]byte, error)
 
 	// Verify will verify signature against public key
-	Verify(doc *credential.Credential, p *proof.Proof, resolver *PublicKeyResolver, opts ...processor.ProcessorOpts) error
+	Verify(doc *credential.Credential, p *proof.Proof, resolver *PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error
 
 	// Accept registers this signature suite with the given signature type
 	Accept(signatureType string) bool

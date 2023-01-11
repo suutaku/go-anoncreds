@@ -18,7 +18,7 @@ func NewBBSG2SignatureVerifier() *BBSG2SignatureVerifier {
 	}
 }
 
-func (verifier *BBSG2SignatureVerifier) Verify(pubKeyBytes, doc, signature []byte) error {
+func (verifier *BBSG2SignatureVerifier) Verify(pubKeyBytes, doc, signature, nonce []byte) error {
 	return verifier.algo.Verify(splitMessageIntoLines(string(doc), true), signature, pubKeyBytes)
 }
 

@@ -25,7 +25,7 @@ func linkedDataProof(t *testing.T) {
 
 	pub, priv, err := bbs.GenerateKeyPair(sha256.New, nil)
 	require.NoError(t, err)
-	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), bbsblssignature2020.NewBBSSigner(priv), false)
+	bbsSuite := bbsblssignature2020.NewBBSSuite(priv, false)
 
 	pubKeyBytes, err = pub.Marshal()
 	require.NoError(t, err)
@@ -40,19 +40,18 @@ func linkedDataProof(t *testing.T) {
 		VerificationMethod:      "did:example:123456#key1",
 	}
 	err = builder.AddLinkedDataProof(ldpContext)
+	t.Logf("%s\n", cred.ToString())
 	require.NoError(t, err)
 	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: pubKeyBytes, Type: "Bls12381G2Key2020"}, nil)
-	err = builder.Verify(resolver)
+	err = builder.Verify(resolver, []byte("nonce"))
 	require.NoError(t, err)
 }
 
 func TestSelectiveDisclosure(t *testing.T) {
 	linkedDataProof(t)
-	bbspsuite := bbsblssignatureproof2020.NewBBSPSuite(
-		bbsblssignatureproof2020.NewBBSG2SignatureProofVerifier([]byte("nonce")),
-		bbsblssignatureproof2020.NewBBSSigProofSigner(priv), false)
+	bbspsuite := bbsblssignatureproof2020.NewBBSPSuite(priv, false)
 
-	bbsSuite := bbsblssignature2020.NewBBSSuite(bbsblssignature2020.NewBBSG2SignatureVerifier(), nil, false)
+	bbsSuite := bbsblssignature2020.NewBBSSuite(priv, false)
 
 	rev := credential.NewCredential()
 	err := rev.FromBytes([]byte(revealJSON))
@@ -71,6 +70,6 @@ func TestSelectiveDisclosure(t *testing.T) {
 	discluBuilder := builder.NewVCBuilder(disclu, processor.WithValidateRDF())
 	discluBuilder.AddSuite(bbspsuite)
 	// discluBuilder.AddSuite(bbsSuite)
-	err = discluBuilder.Verify(resolver)
+	err = discluBuilder.Verify(resolver, []byte("nonce"))
 	require.NoError(t, err)
 }

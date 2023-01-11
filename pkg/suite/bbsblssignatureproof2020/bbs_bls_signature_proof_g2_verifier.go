@@ -6,19 +6,18 @@ import (
 )
 
 type BBSG2SignatureProofVerifier struct {
-	algo  *bbs.Bbs
-	nonce []byte
+	algo *bbs.Bbs
+
 	// resolver *suite.PublickKeyResolver
 }
 
-func NewBBSG2SignatureProofVerifier(nonce []byte) *BBSG2SignatureProofVerifier {
+func NewBBSG2SignatureProofVerifier() *BBSG2SignatureProofVerifier {
 	return &BBSG2SignatureProofVerifier{
-		algo:  bbs.NewBbs(),
-		nonce: nonce,
+		algo: bbs.NewBbs(),
 	}
 }
 
-func (verifier *BBSG2SignatureProofVerifier) Verify(pubkeyBytes, doc, proof []byte) error {
+func (verifier *BBSG2SignatureProofVerifier) Verify(pubkeyBytes, doc, proof, nonce []byte) error {
 
-	return verifier.algo.VerifyProof(tools.SplitMessageIntoLines(string(doc), true), proof, verifier.nonce, pubkeyBytes)
+	return verifier.algo.VerifyProof(tools.SplitMessageIntoLines(string(doc), true), proof, nonce, pubkeyBytes)
 }
