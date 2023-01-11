@@ -209,11 +209,6 @@ func (bbss *BBSPSuite) Verifier() suite.Verifier {
 	return bbss.verifier
 }
 
-func (bbss *BBSPSuite) createVerifyData(jsonldDoc map[string]interface{}, p *proof.Proof,
-	opts ...processor.ProcessorOpts) ([]byte, error) {
-	panic("bbsblssignatureproof2020 have no implementation of CreateVerifyData")
-}
-
 func (bbss *BBSPSuite) AddLinkedDataProof(lcon *proof.LinkedDataProofContext, doc *credential.Credential, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
 	panic("bbsblssignatureproof suite has no implementation of AddLinkedDataProof")
 }
