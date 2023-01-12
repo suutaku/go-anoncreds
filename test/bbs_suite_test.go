@@ -138,7 +138,7 @@ func TestBlindSignAndDisclosure(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ctx)
 
-	// issuer do blind sign with ctx
+	// issuer do blind sign with ctx and holder's public key
 	pubHBytes, err := pubH.Marshal()
 	require.NoError(t, err)
 	blidSig, err := issuerBuilder.BlindSign(ctx.ToBytes(), holderBbsSuite.RevealedIndexs(), holderBbsSuite.MessageCount(), pubHBytes, nonce)
@@ -155,23 +155,26 @@ func TestBlindSignAndDisclosure(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sigDoc)
 
+	// holder verify signature
+	issuerPubBytes, err := pub.Marshal()
+	require.NoError(t, err)
+	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: issuerPubBytes, Type: "Bls12381G2Key2020"}, nil)
+	err = holderBuilder.Verify(resolver, nonce)
+	require.NoError(t, err)
+
 	// holder load revealed VC
 	rev := credential.NewCredential()
 	err = rev.FromBytes([]byte(revealJSON))
 	require.NoError(t, err)
 
-	// holder create selective disclouser with public key
-	hPubBytes, err := pubH.Marshal()
-	require.NoError(t, err)
-	disclu, err := holderBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: hPubBytes, Type: "Bls12381G2Key2020"}, []byte("nonce"))
+	// holder create selective disclouser with issuer's public key
+	disclu, err := holderBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: issuerPubBytes, Type: "Bls12381G2Key2020"}, nonce)
 	require.NoError(t, err)
 	require.Empty(t, disclu.Issued)
 	require.NotEmpty(t, disclu.Expired)
 
 	// verify VC with issuer's public key
-	issuerPubBytes, err := pub.Marshal()
-	require.NoError(t, err)
-	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: issuerPubBytes, Type: "Bls12381G2Key2020"}, nil)
-	err = holderBuilder.Verify(resolver, []byte("nonce"))
+	resolver2 := suite.NewPublicKeyResolver(&suite.PublicKey{Value: issuerPubBytes, Type: "Bls12381G2Key2020"}, nil)
+	err = holderBuilder.Verify(resolver2, nonce)
 	require.NoError(t, err)
 }

@@ -77,7 +77,7 @@ func (bbss *BBSSuite) Verify(doc *credential.Credential, p *proof.Proof, resolve
 	if err != nil {
 		return err
 	}
-	return bbss.Verifier().Verify(pubKeyValue, message, signature, nil)
+	return bbss.Verifier().Verify(pubKeyValue, message, signature, nonce)
 }
 
 const defaultProofPurpose = "assertionMethod"
@@ -88,9 +88,36 @@ const defaultProofPurpose = "assertionMethod"
 // used to un-blind the signature from the signer, and a pedersen
 // commitment from a vector of messages and the domain parameters h and h0.
 // https://identity.foundation/bbs-signature/draft-blind-bbs-signatures.html#section-5.1
-func (bbssuite *BBSSuite) PreBlindSign(doc, secretDoc *credential.Credential, nonceBytes []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignatureContext, error) {
+func (bbssuite *BBSSuite) PreBlindSign(doc, secretDoc *credential.Credential, ldpCtx *proof.LinkedDataProofContext, nonceBytes []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignatureContext, error) {
 	if bbssuite.priv == nil {
 		return nil, fmt.Errorf("suite has no private key")
+	}
+
+	context := ldpCtx.ToContext()
+	// validation of context
+	if err := context.Validate(); err != nil {
+		return nil, err
+	}
+
+	// construct proof
+	p := &proof.Proof{
+		Type:                    context.SignatureType,
+		SignatureRepresentation: context.SignatureRepresentation,
+		Creator:                 context.Creator,
+		Created:                 context.Created,
+		Domain:                  context.Domain,
+		Nonce:                   context.Nonce,
+		VerificationMethod:      context.VerificationMethod,
+		Challenge:               context.Challenge,
+		ProofPurpose:            context.Purpose,
+		CapabilityChain:         context.CapabilityChain,
+	}
+	if p.ProofPurpose == "" {
+		p.ProofPurpose = defaultProofPurpose
+	}
+
+	if context.SignatureRepresentation == proof.SignatureJWS {
+		p.JWS = proof.NewJwt().NewHeader(bbssuite.Alg() + "..")
 	}
 
 	compactedDoc, err := getCompactedWithSecuritySchema(doc.ToMap(), opts...)
@@ -103,7 +130,7 @@ func (bbssuite *BBSSuite) PreBlindSign(doc, secretDoc *credential.Credential, no
 	}
 	bbssuite.blinder.msgCount = msgCount
 	bbssuite.blinder.revealedIdxs = revealedIdxs
-	generator, err := bbssuite.priv.PublicKey().ToPublicKeyWithGenerators(len(secret))
+	generator, err := bbssuite.priv.PublicKey().ToPublicKeyWithGenerators(msgCount)
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +492,7 @@ func getRevealedStatement(revealedDoc map[string]interface{}, revealedIdxs []int
 	transformedReveledDocStatements := make(map[int][]byte, 0)
 	sort.Ints(revealedIdxs)
 	for i := 0; i < len(revealedIdxs); i++ {
-		transformedReveledDocStatements[revealedIdxs[i]] = []byte(processor.TransformBlankNode(string(revealeddocumentStatements[revealedIdxs[i]])))
+		transformedReveledDocStatements[revealedIdxs[i]] = []byte(processor.TransformBlankNode(string(revealeddocumentStatements[i])))
 	}
 
 	return transformedReveledDocStatements, nil
@@ -496,15 +523,26 @@ func getSecretStatement(docCompacted, secret map[string]interface{}, opts ...pro
 	}
 	secretDocumentStatements := tools.SplitMessageIntoLinesStr(string(docBytes), false)
 	transformedSecretStatements := make(map[int][]byte, 0)
-	revealedIdxs := make([]int, 0)
+	resetTransformedSecretStatements := make(map[int][]byte, 0)
+	secretValues := make(map[string]bool, 0)
 	for i, row := range secretDocumentStatements {
 		transformedSecretStatements[i] = []byte(row)
-	}
-	for i := 0; i < len(documentStatements); i++ {
-		if _, contains := transformedSecretStatements[i]; !contains {
-			revealedIdxs = append(revealedIdxs, i)
-		}
+		secretValues[row] = true
 	}
 
-	return transformedSecretStatements, revealedIdxs, len(documentStatements), nil
+	revealedIdxs := make([]int, 0)
+	for k, v := range transformedDocStatements {
+		if !secretValues[string(v)] {
+			revealedIdxs = append(revealedIdxs, k)
+		} else {
+			resetTransformedSecretStatements[k] = v
+		}
+	}
+	// for i := 0; i < len(documentStatements); i++ {
+	// 	if _, contains := transformedSecretStatements[i]; !contains {
+	// 		revealedIdxs = append(revealedIdxs, i)
+	// 	}
+	// }
+
+	return resetTransformedSecretStatements, revealedIdxs, len(documentStatements), nil
 }
