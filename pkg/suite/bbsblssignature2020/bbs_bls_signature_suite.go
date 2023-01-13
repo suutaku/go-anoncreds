@@ -73,6 +73,7 @@ func (bbss *BBSSuite) Verify(doc *credential.Credential, p *proof.Proof, resolve
 	if err != nil {
 		return err
 	}
+
 	pubKeyValue, signature, err := getPublicKeyAndSignature(p.ToMap(), resolver)
 	if err != nil {
 		return err
@@ -88,7 +89,7 @@ const defaultProofPurpose = "assertionMethod"
 // used to un-blind the signature from the signer, and a pedersen
 // commitment from a vector of messages and the domain parameters h and h0.
 // https://identity.foundation/bbs-signature/draft-blind-bbs-signatures.html#section-5.1
-func (bbssuite *BBSSuite) PreBlindSign(doc, secretDoc *credential.Credential, ldpCtx *proof.LinkedDataProofContext, nonceBytes []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignatureContext, error) {
+func (bbssuite *BBSSuite) PreBlindSign(doc, revealDoc *credential.Credential, ldpCtx *proof.LinkedDataProofContext, issuerPublicKeyBytes, nonceBytes []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignatureContext, error) {
 	if bbssuite.priv == nil {
 		return nil, fmt.Errorf("suite has no private key")
 	}
@@ -120,17 +121,27 @@ func (bbssuite *BBSSuite) PreBlindSign(doc, secretDoc *credential.Credential, ld
 		p.JWS = proof.NewJwt().NewHeader(bbssuite.Alg() + "..")
 	}
 
-	compactedDoc, err := getCompactedWithSecuritySchema(doc.ToMap(), opts...)
+	docMsg, err := CreateVerifyData(bbssuite, doc.ToMap(), p, opts...)
 	if err != nil {
 		return nil, err
 	}
-	secret, revealedIdxs, msgCount, err := getSecretStatement(compactedDoc, secretDoc.ToMap(), opts...)
+
+	recealMsg, err := CreateVerifyData(bbssuite, revealDoc.ToMap(), p, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, revealedIdxs, msgCount, err := computeSecretMessages(docMsg, recealMsg)
 	if err != nil {
 		return nil, err
 	}
 	bbssuite.blinder.msgCount = msgCount
 	bbssuite.blinder.revealedIdxs = revealedIdxs
-	generator, err := bbssuite.priv.PublicKey().ToPublicKeyWithGenerators(msgCount)
+	issuerPub, err := bbs.UnmarshalPublicKey(issuerPublicKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	generator, err := issuerPub.ToPublicKeyWithGenerators(msgCount)
 	if err != nil {
 		return nil, err
 	}
@@ -151,22 +162,53 @@ func (bbssuite *BBSSuite) BlindingFactor() *bbs.SignatureBliding {
 	return bbssuite.blinder.blindFactor
 }
 
-func (bbssuite *BBSSuite) BlindSign(ctxBytes []byte, revealedMegs map[string]interface{}, revealedIdxs []int, msgCount int, pubBytes []byte, nonce []byte) (*bbs.BlindSignature, error) {
+func (bbssuite *BBSSuite) BlindSign(ctxBytes []byte, revealedMegs map[string]interface{}, revealedIdxs []int, msgCount int, ldpCtx *proof.LinkedDataProofContext, nonce []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignature, error) {
+	context := ldpCtx.ToContext()
+	// validation of context
+	if err := context.Validate(); err != nil {
+		return nil, err
+	}
+
+	// construct proof
+	p := &proof.Proof{
+		Type:                    context.SignatureType,
+		SignatureRepresentation: context.SignatureRepresentation,
+		Creator:                 context.Creator,
+		Created:                 context.Created,
+		Domain:                  context.Domain,
+		Nonce:                   context.Nonce,
+		VerificationMethod:      context.VerificationMethod,
+		Challenge:               context.Challenge,
+		ProofPurpose:            context.Purpose,
+		CapabilityChain:         context.CapabilityChain,
+	}
+	if p.ProofPurpose == "" {
+		p.ProofPurpose = defaultProofPurpose
+	}
+
+	if context.SignatureRepresentation == proof.SignatureJWS {
+		p.JWS = proof.NewJwt().NewHeader(bbssuite.Alg() + "..")
+	}
 
 	ctx := new(bbs.BlindSignatureContext)
 	if err := ctx.FromBytes(ctxBytes); err != nil {
 		return nil, err
 	}
-	pub, err := bbs.UnmarshalPublicKey(pubBytes)
-	if err != nil {
-		return nil, err
+	if bbssuite.priv == nil {
+		return nil, fmt.Errorf("issuer private key was empty")
 	}
-	generator, err := pub.ToPublicKeyWithGenerators(msgCount)
+	generator, err := bbssuite.priv.PublicKey().ToPublicKeyWithGenerators(msgCount)
 	if err != nil {
 		return nil, err
 	}
 	proofNonce := bbs.ParseProofNonce(nonce)
-	revealedMegsMap, err := getRevealedStatement(revealedMegs, revealedIdxs)
+
+	revealedVerifyMsgs, err := CreateVerifyData(bbssuite, revealedMegs, p, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	revealedMegsMap, err := getRevealedStatement(revealedVerifyMsgs, revealedIdxs)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +219,8 @@ func (bbssuite *BBSSuite) BlindSign(ctxBytes []byte, revealedMegs map[string]int
 	return blindSig, nil
 }
 
-func (bbssuite *BBSSuite) CompleteSignture(lcon *proof.LinkedDataProofContext, doc *credential.Credential, blindSig *bbs.BlindSignature, blindFactory *bbs.SignatureBliding) (*credential.Credential, error) {
-	signture := blindSig.ToUnblinded(blindFactory)
+func (bbssuite *BBSSuite) CompleteSignture(lcon *proof.LinkedDataProofContext, doc *credential.Credential, blindSig *bbs.BlindSignature, blindFactor *bbs.SignatureBliding) (*credential.Credential, error) {
+	signture := blindSig.ToUnblinded(blindFactor)
 	context := lcon.ToContext()
 	// validation of context
 	if err := context.Validate(); err != nil {
@@ -204,6 +246,7 @@ func (bbssuite *BBSSuite) CompleteSignture(lcon *proof.LinkedDataProofContext, d
 	if context.SignatureRepresentation == proof.SignatureJWS {
 		p.JWS = proof.NewJwt().NewHeader(bbssuite.Alg() + "..")
 	}
+
 	sigBytes, err := signture.ToBytes()
 	if err != nil {
 		return nil, err
@@ -481,68 +524,40 @@ func (bbss *BBSSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential,
 	panic("bbsblssignatrure suite has no implementation of SelectiveDisclosure")
 }
 
-func getRevealedStatement(revealedDoc map[string]interface{}, revealedIdxs []int, opts ...processor.ProcessorOpts) (map[int][]byte, error) {
+func getRevealedStatement(verifyMsgs []byte, revealedIdxs []int, opts ...processor.ProcessorOpts) (map[int][]byte, error) {
 	// create verify document data
-	newOpts := append(opts, processor.WithFrameBlankNodes())
-	docBytes, err := processor.Default().GetCanonicalDocument(revealedDoc, newOpts...)
-	if err != nil {
-		return nil, err
+	revealeddocumentStatements := tools.SplitMessageIntoLinesStr(string(verifyMsgs), true)
+	if len(revealeddocumentStatements) != len(revealedIdxs) {
+		return nil, fmt.Errorf("revealed message length not equal revealed indexs")
 	}
-	revealeddocumentStatements := tools.SplitMessageIntoLinesStr(string(docBytes), false)
 	transformedReveledDocStatements := make(map[int][]byte, 0)
 	sort.Ints(revealedIdxs)
 	for i := 0; i < len(revealedIdxs); i++ {
-		transformedReveledDocStatements[revealedIdxs[i]] = []byte(processor.TransformBlankNode(string(revealeddocumentStatements[i])))
+		transformedReveledDocStatements[revealedIdxs[i]] = []byte(revealeddocumentStatements[i])
 	}
-
 	return transformedReveledDocStatements, nil
 }
 
-func getSecretStatement(docCompacted, secret map[string]interface{}, opts ...processor.ProcessorOpts) (map[int][]byte, []int, int, error) {
-	// create verify document data
-	docBytes, err := processor.Default().GetCanonicalDocument(docCompacted, opts...)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	documentStatements := tools.SplitMessageIntoLinesStr(string(docBytes), false)
-	transformedDocStatements := make(map[int][]byte, 0)
+func computeSecretMessages(allMsgs, revealMsgs []byte) (map[int][]byte, []int, int, error) {
+	allMsgLines := tools.SplitMessageIntoLines(string(allMsgs), true)
+	revealtMsgLines := tools.SplitMessageIntoLines(string(revealMsgs), true)
 
-	for i, row := range documentStatements {
-		transformedDocStatements[i] = []byte(processor.TransformBlankNode(string(row)))
+	if len(allMsgLines) == 0 || len(revealMsgs) == 0 {
+		return nil, nil, 0, fmt.Errorf("invalid input")
 	}
-	newOpts := append(opts, processor.WithFrameBlankNodes())
-	secretDocumentResult, err := processor.Default().Frame(docCompacted, secret, newOpts...)
-	if err != nil {
-		return nil, nil, 0, fmt.Errorf("frame doc with reveal doc: %w", err)
+	revealInversed := make(map[string]bool)
+	for _, v := range revealtMsgLines {
+		revealInversed[string(v)] = true
 	}
-
-	// create verify reveal data
-	docBytes, err = processor.Default().GetCanonicalDocument(secretDocumentResult, opts...)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	secretDocumentStatements := tools.SplitMessageIntoLinesStr(string(docBytes), false)
-	transformedSecretStatements := make(map[int][]byte, 0)
-	resetTransformedSecretStatements := make(map[int][]byte, 0)
-	secretValues := make(map[string]bool, 0)
-	for i, row := range secretDocumentStatements {
-		transformedSecretStatements[i] = []byte(row)
-		secretValues[row] = true
-	}
-
-	revealedIdxs := make([]int, 0)
-	for k, v := range transformedDocStatements {
-		if !secretValues[string(v)] {
-			revealedIdxs = append(revealedIdxs, k)
+	secMsgs := make(map[int][]byte)
+	revealIdxs := make([]int, 0)
+	for k, v := range allMsgLines {
+		if revealInversed[string(v)] {
+			revealIdxs = append(revealIdxs, k)
 		} else {
-			resetTransformedSecretStatements[k] = v
+			secMsgs[k] = v
 		}
 	}
-	// for i := 0; i < len(documentStatements); i++ {
-	// 	if _, contains := transformedSecretStatements[i]; !contains {
-	// 		revealedIdxs = append(revealedIdxs, i)
-	// 	}
-	// }
+	return secMsgs, revealIdxs, len(allMsgLines), nil
 
-	return resetTransformedSecretStatements, revealedIdxs, len(documentStatements), nil
 }

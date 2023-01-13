@@ -22,7 +22,3 @@ func (bld *Blinder) CreateContext(secretMsgs map[int][]byte, generator *bbs.Publ
 	bld.blindFactor = factor
 	return ctx, err
 }
-
-func (bld *Blinder) MessageCount() int {
-	return bld.msgCount
-}

@@ -59,6 +59,7 @@ func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver, nonce []byte
 	}
 	for _, pm := range proofs {
 		p := proof.NewProofFromMap(pm)
+
 		suit := builder.signatureSuite[pm["type"].(string)]
 		if suit == nil {
 			return fmt.Errorf("cannot get singanture suite for type: %s", pm["type"].(string))
@@ -87,7 +88,7 @@ func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.C
 
 }
 
-func (builder *VCBuilder) PreBlindSign(secDoc *credential.Credential, nonce []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignatureContext, error) {
+func (builder *VCBuilder) PreBlindSign(revealDoc *credential.Credential, ldpCtx *proof.LinkedDataProofContext, issuerPublicKeyBytes, nonce []byte, opts ...processor.ProcessorOpts) (*bbs.BlindSignatureContext, error) {
 	if builder.credential == nil {
 		return nil, fmt.Errorf("no credential parsed")
 	}
@@ -95,10 +96,16 @@ func (builder *VCBuilder) PreBlindSign(secDoc *credential.Credential, nonce []by
 	if s == nil {
 		return nil, fmt.Errorf("expected at least one signature suit present")
 	}
-	return s.(*bbsblssignature2020.BBSSuite).PreBlindSign(builder.credential, secDoc, nonce, opts...)
+	return s.(*bbsblssignature2020.BBSSuite).PreBlindSign(builder.credential, revealDoc, ldpCtx, issuerPublicKeyBytes, nonce, opts...)
 }
 
-func (builder *VCBuilder) BlindSign(ctxBytes []byte, revealedIdxs []int, msgCount int, pubBytes, nonce []byte) (*bbs.BlindSignature, error) {
+func (builder *VCBuilder) BlindSign(
+	ctxBytes []byte,
+	revealedIdxs []int,
+	msgCount int,
+	ldpCtx *proof.LinkedDataProofContext,
+	nonce []byte,
+	opts ...processor.ProcessorOpts) (*bbs.BlindSignature, error) {
 	if builder.credential == nil {
 		return nil, fmt.Errorf("no credential parsed")
 	}
@@ -106,7 +113,14 @@ func (builder *VCBuilder) BlindSign(ctxBytes []byte, revealedIdxs []int, msgCoun
 	if s == nil {
 		return nil, fmt.Errorf("expected at least one signature suit present")
 	}
-	return s.(*bbsblssignature2020.BBSSuite).BlindSign(ctxBytes, builder.credential.ToMap(), revealedIdxs, msgCount, pubBytes, nonce)
+	return s.(*bbsblssignature2020.BBSSuite).BlindSign(
+		ctxBytes,
+		builder.credential.ToMap(),
+		revealedIdxs,
+		msgCount,
+		ldpCtx,
+		nonce,
+		opts...)
 }
 
 func (builder *VCBuilder) CompleteSignture(lcon *proof.LinkedDataProofContext, blindSig *bbs.BlindSignature) (*credential.Credential, error) {
