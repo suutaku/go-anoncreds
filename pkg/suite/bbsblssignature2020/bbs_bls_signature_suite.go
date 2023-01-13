@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/suutaku/go-anoncreds/internal/tools"
+	resolver "github.com/suutaku/go-anoncreds/pkg/key-resolver"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-bbs/pkg/bbs"
 	"github.com/suutaku/go-vc/pkg/credential"
@@ -67,7 +68,7 @@ func (bbss *BBSSuite) Verifier() suite.Verifier {
 }
 
 // Verify will verify signature against public key
-func (bbss *BBSSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver *suite.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
+func (bbss *BBSSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver resolver.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
 	// get verify data
 	message, err := CreateVerifyData(bbss, doc.ToMap(), p, opts...)
 	if err != nil {
@@ -297,7 +298,7 @@ func (bbs *BBSSuite) AddLinkedDataProof(lcon *proof.LinkedDataProofContext, doc 
 	return doc, err
 }
 
-func getPublicKeyAndSignature(pmap map[string]interface{}, resolver *suite.PublicKeyResolver) ([]byte, []byte, error) {
+func getPublicKeyAndSignature(pmap map[string]interface{}, resolver resolver.PublicKeyResolver) ([]byte, []byte, error) {
 	p := proof.NewProofFromMap(pmap)
 	pid, err := p.PublicKeyId()
 	if err != nil {
@@ -520,7 +521,7 @@ func prepareDocumentForJWS(s suite.SignatureSuite, jsonldObject map[string]inter
 }
 
 // SelectiveDisclosure(blsMessages [][]byte, signature, nonce, pubKeyBytes []byte, revIndexes []int) ([]byte, error)
-func (bbss *BBSSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential, pubKey *suite.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
+func (bbss *BBSSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential, pubKey *resolver.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
 	panic("bbsblssignatrure suite has no implementation of SelectiveDisclosure")
 }
 

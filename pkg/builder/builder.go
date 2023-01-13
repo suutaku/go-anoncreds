@@ -3,6 +3,7 @@ package builder
 import (
 	"fmt"
 
+	resolver "github.com/suutaku/go-anoncreds/pkg/key-resolver"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignatureproof2020"
@@ -46,7 +47,7 @@ func (builder *VCBuilder) AddLinkedDataProof(lcon *proof.LinkedDataProofContext)
 	return sigedDoc, nil
 }
 
-func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver, nonce []byte) error {
+func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, nonce []byte) error {
 	if builder.credential == nil {
 		return fmt.Errorf("credential was empty")
 	}
@@ -72,7 +73,7 @@ func (builder *VCBuilder) Verify(resolver *suite.PublicKeyResolver, nonce []byte
 	return nil
 
 }
-func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.Credential, pubKey *suite.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
+func (builder *VCBuilder) GenerateBBSSelectiveDisclosure(revealDoc *credential.Credential, pubKey *resolver.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
 	if builder.credential == nil {
 		return nil, fmt.Errorf("no credential parsed")
 	}

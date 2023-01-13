@@ -1,12 +1,13 @@
 package test
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"github.com/suutaku/go-anoncreds/pkg/builder"
-	"github.com/suutaku/go-anoncreds/pkg/suite"
+	keyresolver "github.com/suutaku/go-anoncreds/pkg/key-resolver"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignatureproof2020"
 	"github.com/suutaku/go-bbs/pkg/bbs"
@@ -23,16 +24,13 @@ func TestSignAndDisclosure(t *testing.T) {
 	require.NoError(t, err)
 
 	// issuer and holder key pair
-	issuerPrivateKeyBytes, _ := hex.DecodeString("4b47459199b0c2210de9d28c1412551c28c57caae60872aa677bc9af2038d22b")
-	holderPrivateKeyByets, _ := hex.DecodeString("63e5cd2c608861a712f003254d6bf5f5f5921651e323162bea78d0f5e7d77225")
-
-	issuerPrivateKey, err := bbs.UnmarshalPrivateKey(issuerPrivateKeyBytes)
+	issuerPublicKey, issuerPrivateKey, err := bbs.GenerateKeyPair(sha256.New, nil)
 	require.NoError(t, err)
-	issuerPublicKey := issuerPrivateKey.PublicKey()
+
 	issuerPublicKeyBytes, err := issuerPublicKey.Marshal()
 	require.NoError(t, err)
 
-	holderPrivateKey, err := bbs.UnmarshalPrivateKey(holderPrivateKeyByets)
+	_, holderPrivateKey, err := bbs.GenerateKeyPair(sha256.New, nil)
 	require.NoError(t, err)
 
 	// issuer create signature suite
@@ -58,8 +56,8 @@ func TestSignAndDisclosure(t *testing.T) {
 	require.NotNil(t, sigDoc)
 
 	// issuer verify with public key
-	resolver := suite.NewPublicKeyResolver(
-		&suite.PublicKey{
+	resolver := keyresolver.NewTestPublicKeyResolver(
+		&keyresolver.PublicKey{
 			Value: issuerPublicKeyBytes,
 			Type:  "Bls12381G2Key2020",
 		},
@@ -87,7 +85,7 @@ func TestSignAndDisclosure(t *testing.T) {
 	nonce := []byte("nonce")
 	disclu, err := holderBuilder.GenerateBBSSelectiveDisclosure(
 		rev,
-		&suite.PublicKey{
+		&keyresolver.PublicKey{
 			Value: issuerPublicKeyBytes,
 			Type:  "Bls12381G2Key2020",
 		},
@@ -182,7 +180,7 @@ func TestBlindSignAndDisclosure(t *testing.T) {
 	require.NotNil(t, sigDoc)
 
 	// holder verify signature
-	resolver := suite.NewPublicKeyResolver(&suite.PublicKey{Value: issuerPublicKeyBytes, Type: "Bls12381G2Key2020"}, nil)
+	resolver := keyresolver.NewTestPublicKeyResolver(&keyresolver.PublicKey{Value: issuerPublicKeyBytes, Type: "Bls12381G2Key2020"}, nil)
 	err = holderBuilder.Verify(resolver, nonce)
 	require.NoError(t, err)
 
@@ -192,7 +190,7 @@ func TestBlindSignAndDisclosure(t *testing.T) {
 	require.NoError(t, err)
 
 	// holder create selective disclouser with issuer's public key
-	disclu, err := holderBuilder.GenerateBBSSelectiveDisclosure(rev, &suite.PublicKey{Value: issuerPublicKeyBytes, Type: "Bls12381G2Key2020"}, nonce)
+	disclu, err := holderBuilder.GenerateBBSSelectiveDisclosure(rev, &keyresolver.PublicKey{Value: issuerPublicKeyBytes, Type: "Bls12381G2Key2020"}, nonce)
 	require.NoError(t, err)
 	require.NotEmpty(t, disclu.Expired)
 

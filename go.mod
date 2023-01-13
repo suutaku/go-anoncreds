@@ -4,8 +4,7 @@ go 1.18
 
 require (
 	github.com/stretchr/testify v1.8.1
-	github.com/suutaku/go-bbs v0.0.0-20220918155818-8076d0428414
-	github.com/suutaku/go-vc v0.0.0-00010101000000-000000000000
+	github.com/suutaku/go-bbs v0.0.0-20230113073616-7fcad6e82156
 )
 
 require (
@@ -17,6 +16,7 @@ require (
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/suutaku/bls12381 v0.0.0-20220909105542-17195eab9a7d // indirect
+	github.com/suutaku/go-vc v0.0.0-20230113074837-d5c566eb9532 // indirect
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect

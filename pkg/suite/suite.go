@@ -1,6 +1,7 @@
 package suite
 
 import (
+	resolver "github.com/suutaku/go-anoncreds/pkg/key-resolver"
 	"github.com/suutaku/go-vc/pkg/credential"
 	"github.com/suutaku/go-vc/pkg/processor"
 	"github.com/suutaku/go-vc/pkg/proof"
@@ -20,7 +21,7 @@ type SignatureSuite interface {
 	Sign(doc []byte) ([]byte, error)
 
 	// Verify will verify signature against public key
-	Verify(doc *credential.Credential, p *proof.Proof, resolver *PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error
+	Verify(doc *credential.Credential, p *proof.Proof, resolver resolver.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error
 
 	// Accept registers this signature suite with the given signature type
 	Accept(signatureType string) bool
@@ -34,5 +35,5 @@ type SignatureSuite interface {
 	AddLinkedDataProof(lcon *proof.LinkedDataProofContext, doc *credential.Credential, opts ...processor.ProcessorOpts) (*credential.Credential, error)
 
 	//SelectiveDisclosure(blsMessages [][]byte, signature, nonce, pubKeyBytes []byte, revIndexes []int) ([]byte, error)
-	SelectiveDisclosure(doc, revealDoc *credential.Credential, pubKey *PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error)
+	SelectiveDisclosure(doc, revealDoc *credential.Credential, pubKey *resolver.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error)
 }

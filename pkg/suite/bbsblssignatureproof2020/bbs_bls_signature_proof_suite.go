@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/suutaku/go-anoncreds/internal/tools"
+	resolver "github.com/suutaku/go-anoncreds/pkg/key-resolver"
 	"github.com/suutaku/go-anoncreds/pkg/suite"
 	"github.com/suutaku/go-anoncreds/pkg/suite/bbsblssignature2020"
 	"github.com/suutaku/go-bbs/pkg/bbs"
@@ -66,7 +67,7 @@ func (bbss *BBSPSuite) Sign(docByte []byte) ([]byte, error) {
 }
 
 // Verify will verify signature against public key
-func (bbss *BBSPSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver *suite.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
+func (bbss *BBSPSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver resolver.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
 
 	// get verify data
 	message, err := bbsblssignature2020.CreateVerifyData(bbss, doc.ToMap(), p, opts...)
@@ -153,7 +154,7 @@ func buildDocVerificationData(docCompacted, revealDoc map[string]interface{}, op
 	}, nil
 }
 
-func (bbs *BBSPSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential, pubKey *suite.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
+func (bbs *BBSPSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential, pubKey *resolver.PublicKey, nonce []byte, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("no credential parsed")
 	}
@@ -186,7 +187,7 @@ func (bbs *BBSPSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential,
 		if dErr != nil {
 			return nil, fmt.Errorf("build verification data: %w", dErr)
 		}
-		resolver := suite.NewPublicKeyResolver(pubKey, nil)
+		resolver := resolver.NewTestPublicKeyResolver(pubKey, nil)
 		derivedProof, dErr := generateSignatureProof(blsSignature, resolver, nonce, verData, bbs)
 		if dErr != nil {
 			return nil, fmt.Errorf("generate signature proof: %w", dErr)
@@ -214,7 +215,7 @@ func (bbss *BBSPSuite) AddLinkedDataProof(lcon *proof.LinkedDataProofContext, do
 	panic("bbsblssignatureproof suite has no implementation of AddLinkedDataProof")
 }
 
-func generateSignatureProof(blsSignature map[string]interface{}, resolver *suite.PublicKeyResolver, nonce []byte, verData *suite.VerificationData, s suite.SignatureSuite) (map[string]interface{}, error) {
+func generateSignatureProof(blsSignature map[string]interface{}, resolver resolver.PublicKeyResolver, nonce []byte, verData *suite.VerificationData, s suite.SignatureSuite) (map[string]interface{}, error) {
 	pubKeyBytes, signatureBytes, pErr := getPublicKeyAndSignature(blsSignature, resolver)
 	if pErr != nil {
 		return nil, fmt.Errorf("get public key and signature: %w", pErr)
@@ -289,7 +290,7 @@ func createVerifyProofData(proofMap map[string]interface{}, opts ...processor.Pr
 	return tools.SplitMessageIntoLinesStr(string(proofBytes), false), nil
 }
 
-func getPublicKeyAndSignature(pmap map[string]interface{}, resolver *suite.PublicKeyResolver) ([]byte, []byte, error) {
+func getPublicKeyAndSignature(pmap map[string]interface{}, resolver resolver.PublicKeyResolver) ([]byte, []byte, error) {
 	p := proof.NewProofFromMap(pmap)
 	pid, err := p.PublicKeyId()
 	if err != nil {
