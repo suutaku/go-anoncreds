@@ -41,7 +41,6 @@ func NewBBSSuite(priv *bbs.PrivateKey, compacted bool) *BBSSuite {
 
 // GetCanonicalDocument will return normalized/canonical version of the document
 func (bbss *BBSSuite) GetCanonicalDocument(doc map[string]interface{}, opts ...processor.ProcessorOpts) ([]byte, error) {
-
 	return bbss.jsonldProcess.GetCanonicalDocument(doc, opts...)
 
 }

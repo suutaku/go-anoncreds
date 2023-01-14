@@ -33,13 +33,13 @@ func (builder *VCBuilder) AddSuite(s suite.SignatureSuite) {
 	builder.signatureSuite[s.Alg()] = s
 }
 
-func (builder *VCBuilder) AddLinkedDataProof(lcon *proof.LinkedDataProofContext) (*credential.Credential, error) {
+func (builder *VCBuilder) AddLinkedDataProof(lcon *proof.LinkedDataProofContext, opts ...processor.ProcessorOpts) (*credential.Credential, error) {
 	// get signature suit
 	suit := builder.signatureSuite[lcon.SignatureType]
 	if suit == nil {
 		return nil, fmt.Errorf("cannot get signature suite with type: %s", lcon.SignatureType)
 	}
-	sigedDoc, err := suit.AddLinkedDataProof(lcon, builder.credential)
+	sigedDoc, err := suit.AddLinkedDataProof(lcon, builder.credential, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (builder *VCBuilder) AddLinkedDataProof(lcon *proof.LinkedDataProofContext)
 	return sigedDoc, nil
 }
 
-func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, nonce []byte) error {
+func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
 	if builder.credential == nil {
 		return fmt.Errorf("credential was empty")
 	}
@@ -65,7 +65,7 @@ func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, nonce []by
 		if suit == nil {
 			return fmt.Errorf("cannot get singanture suite for type: %s", pm["type"].(string))
 		}
-		err = suit.Verify(builder.credential, p, resolver, nonce)
+		err = suit.Verify(builder.credential, p, resolver, nonce, opts...)
 		if err != nil {
 			return err
 		}

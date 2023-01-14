@@ -175,7 +175,7 @@ func (bbs *BBSPSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential,
 		return nil, fmt.Errorf("no BbsBlsSignature2020 proof present")
 	}
 
-	docVerData, pErr := buildDocVerificationData(docWithoutProof, revealDoc.ToMap())
+	docVerData, pErr := buildDocVerificationData(docWithoutProof, revealDoc.ToMap(), opts...)
 	if pErr != nil {
 		return nil, fmt.Errorf("build document verification data: %w", pErr)
 	}
@@ -183,7 +183,7 @@ func (bbs *BBSPSuite) SelectiveDisclosure(doc, revealDoc *credential.Credential,
 	proofs := make([]map[string]interface{}, len(blsSignatures))
 
 	for i, blsSignature := range blsSignatures {
-		verData, dErr := buildVerificationData(blsSignature, docVerData)
+		verData, dErr := buildVerificationData(blsSignature, docVerData, opts...)
 		if dErr != nil {
 			return nil, fmt.Errorf("build verification data: %w", dErr)
 		}
@@ -247,8 +247,8 @@ func toArrayOfBytes(messages []string) [][]byte {
 	return res
 }
 
-func buildVerificationData(blsProof map[string]interface{}, docVerData *suite.DocVerificationData) (*suite.VerificationData, error) {
-	proofStatements, err := createVerifyProofData(blsProof)
+func buildVerificationData(blsProof map[string]interface{}, docVerData *suite.DocVerificationData, opts ...processor.ProcessorOpts) (*suite.VerificationData, error) {
+	proofStatements, err := createVerifyProofData(blsProof, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("create verify proof data: %w", err)
 	}
