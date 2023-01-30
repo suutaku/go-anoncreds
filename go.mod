@@ -7,7 +7,7 @@ require (
 	github.com/piprate/json-gold v0.5.0
 	github.com/stretchr/testify v1.8.1
 	github.com/suutaku/go-bbs v0.0.0-20230128100940-bbf42a26767b
-	github.com/suutaku/go-vc v0.0.0-20230113081716-116281ff9784
+	github.com/suutaku/go-vc v0.0.0-20230130055842-bc86d6abc2e3
 	github.com/suutaku/ld-loader v0.0.0-20230114111344-31c8d9144d17
 )
 

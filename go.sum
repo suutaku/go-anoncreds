@@ -58,6 +58,8 @@ github.com/suutaku/go-bbs v0.0.0-20230128100940-bbf42a26767b h1:g+VFDEKRIyxBocuP
 github.com/suutaku/go-bbs v0.0.0-20230128100940-bbf42a26767b/go.mod h1:y1DJjKzRMY5ZvKgOnUQVF0q8rFPDMAkLxTZlqS2JRU8=
 github.com/suutaku/go-vc v0.0.0-20230113081716-116281ff9784 h1:4fz50QpQr+87KNwGY88R5NVOKXHl84s/N9NIHwjiQFw=
 github.com/suutaku/go-vc v0.0.0-20230113081716-116281ff9784/go.mod h1:h9sH1DN5ASoNwP9Avr+JoEqtM3UDcZNSP0HNV+h2Igs=
+github.com/suutaku/go-vc v0.0.0-20230130055842-bc86d6abc2e3 h1:M0yG+OZmc6RIT4IBfcxIfjI5pc4bOK0ZF/1Pey7O1A8=
+github.com/suutaku/go-vc v0.0.0-20230130055842-bc86d6abc2e3/go.mod h1:h9sH1DN5ASoNwP9Avr+JoEqtM3UDcZNSP0HNV+h2Igs=
 github.com/suutaku/ld-loader v0.0.0-20230114111344-31c8d9144d17 h1:AzhClWmciLsRXQGpOmQa0L6WF+BKfVX9esnP7hQ1Iio=
 github.com/suutaku/ld-loader v0.0.0-20230114111344-31c8d9144d17/go.mod h1:1o7VK/jURtYzqjKHONuGE6p2Ns6H6H1bgAngZYLv2NI=
 github.com/syndtr/goleveldb v1.0.0 h1:fBdIW9lB4Iz0n9khmH8w27SJ3QEJ7+IgjPEwGSZiFdE=
