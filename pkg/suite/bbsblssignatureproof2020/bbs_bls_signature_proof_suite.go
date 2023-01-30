@@ -68,7 +68,6 @@ func (bbss *BBSPSuite) Sign(docByte []byte) ([]byte, error) {
 
 // Verify will verify signature against public key
 func (bbss *BBSPSuite) Verify(doc *credential.Credential, p *proof.Proof, resolver resolver.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
-
 	// get verify data
 	message, err := bbsblssignature2020.CreateVerifyData(bbss, doc.ToMap(), p, opts...)
 	if err != nil {

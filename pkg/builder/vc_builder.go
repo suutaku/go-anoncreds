@@ -47,7 +47,7 @@ func (builder *VCBuilder) AddLinkedDataProof(lcon *proof.LinkedDataProofContext,
 	return sigedDoc, nil
 }
 
-func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, nonce []byte, opts ...processor.ProcessorOpts) error {
+func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, opts ...processor.ProcessorOpts) error {
 	if builder.credential == nil {
 		return fmt.Errorf("credential was empty")
 	}
@@ -65,7 +65,7 @@ func (builder *VCBuilder) Verify(resolver resolver.PublicKeyResolver, nonce []by
 		if suit == nil {
 			return fmt.Errorf("cannot get singanture suite for type: %s", pm["type"].(string))
 		}
-		err = suit.Verify(builder.credential, p, resolver, nonce, opts...)
+		err = suit.Verify(builder.credential, p, resolver, p.Nonce, opts...)
 		if err != nil {
 			return err
 		}

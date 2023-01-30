@@ -2,6 +2,7 @@ package test
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"net/http"
 	"testing"
@@ -35,6 +36,9 @@ func TestSignAndDisclosure(t *testing.T) {
 	// issuer and holder key pair
 	issuerPublicKey, issuerPrivateKey, err := bbs.GenerateKeyPair(sha256.New, nil)
 	require.NoError(t, err)
+	testKeyBs, err := issuerPrivateKey.Marshal()
+	require.NoError(t, err)
+	t.Log(base64.RawStdEncoding.EncodeToString(testKeyBs))
 
 	issuerPublicKeyBytes, err := issuerPublicKey.Marshal()
 	require.NoError(t, err)
@@ -84,7 +88,6 @@ func TestSignAndDisclosure(t *testing.T) {
 		nil)
 	err = issuerBuilder.Verify(
 		resolver,
-		[]byte("nonce"),
 		processor.WithDocumentLoader(dLoader),
 	)
 
@@ -127,6 +130,7 @@ func TestSignAndDisclosure(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, disclu.Issued)
 	require.NotEmpty(t, disclu.Expired)
+	t.Logf("%s\n", disclu.ToString())
 
 	t.Log("verifier verify VC with issuer's public key")
 	// verifier verify VC with issuer's public key
@@ -139,7 +143,6 @@ func TestSignAndDisclosure(t *testing.T) {
 	verifier.AddSuite(bbsblssignatureproof2020.NewBBSPSuite(nil, false))
 	err = verifier.Verify(
 		resolver,
-		nonce,
 		processor.WithDocumentLoader(dLoader),
 	)
 
@@ -254,7 +257,6 @@ func TestBlindSignAndDisclosure(t *testing.T) {
 	resolver := keyresolver.NewTestPublicKeyResolver(&keyresolver.PublicKey{Value: issuerPublicKeyBytes, Type: "Bls12381G2Key2020"}, nil)
 	err = holderBuilder.Verify(
 		resolver,
-		nonce,
 		processor.WithDocumentLoader(dLoader))
 
 	require.NoError(t, err)
@@ -287,7 +289,6 @@ func TestBlindSignAndDisclosure(t *testing.T) {
 	verifier.AddSuite(bbsblssignatureproof2020.NewBBSPSuite(nil, false))
 	err = verifier.Verify(
 		resolver,
-		nonce,
 		processor.WithDocumentLoader(dLoader),
 	)
 	require.NoError(t, err)
